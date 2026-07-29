@@ -7,7 +7,8 @@
   # this cannot be dropped. Point it somewhere else to pin nixpkgs yourself.
   inputs.nixpkgs.follows = "nivis/nixpkgs";
 
-  outputs = inputs@{ nivis, ... }:
+  outputs =
+    inputs@{ nivis, ... }:
     nivis.inputs.flake-parts.lib.mkFlake { inherit inputs; } {
       systems = nivis.lib.defaultSystems;
 
@@ -19,37 +20,69 @@
         })
       ];
 
-      perSystem = { pkgs, config, src, mkApp, mkDevShell, ... }: {
-        # Exercises `src`: the derivation only builds if the cleaned tree
-        # actually reached this module.
-        packages.default = pkgs.runCommand "example-consumer" { } ''
-          test -f ${src}/flake.nix
-          mkdir -p $out/bin
-          printf '#!/bin/sh\necho ok\n' > $out/bin/example-consumer
-          chmod +x $out/bin/example-consumer
-        '';
+      perSystem =
+        {
+          pkgs,
+          config,
+          src,
+          mkApp,
+          mkRootedApp,
+          mkDevShell,
+          ...
+        }:
+        {
+          # Everything that has to actually run lives under `checks`: those are
+          # the only outputs `nix flake check` builds. A `packages.default` with
+          # assertions in it is evaluated and never built, so its assertions
+          # would never fail.
+          checks = {
+            # Exercises `src` in both directions. `scratch/keep` is committed
+            # next to this flake, so the second assertion goes red the moment
+            # `srcExcludes` stops being applied — without it the exclusion is
+            # untested, since nothing else in this tree matches it.
+            src = pkgs.runCommand "check-src" { } ''
+              test -f ${src}/flake.nix
+              test ! -e ${src}/scratch
+              touch $out
+            '';
 
-        # Exercises `mkApp` / `mkRootedApp` / `devTools`.
-        apps.probe = mkApp {
-          name = "probe";
-          text = ''
-            jq --version
+            # Exercises `mkRootedApp` / `devTools`: building the app runs
+            # writeShellApplication's shellcheck pass over the generated script.
+            probe = mkRootedApp {
+              name = "probe";
+              text = ''
+                jq --version
+              '';
+            };
+
+            shell = config.devShells.default;
+          };
+
+          packages.default = pkgs.runCommand "example-consumer" { } ''
+            mkdir -p $out/bin
+            printf '#!/bin/sh\necho ok\n' > $out/bin/example-consumer
+            chmod +x $out/bin/example-consumer
           '';
+
+          # Exercises `mkApp` at the flake-output level.
+          apps.probe = mkApp {
+            name = "probe";
+            text = ''
+              jq --version
+            '';
+          };
+
+          # Exercises the project-side half of the merge: nivis enabled nixfmt
+          # and prettier, this adds a formatter on top.
+          treefmt.programs.shfmt.enable = true;
+
+          # Exercises the same merge for hooks.
+          pre-commit.settings.hooks.check-executables-have-shebangs.enable = true;
+
+          devShells.default = mkDevShell {
+            packages = [ pkgs.jq ];
+            env.EXAMPLE_CONSUMER = "1";
+          };
         };
-
-        # Exercises the project-side half of the merge: nivis enabled
-        # nixpkgs-fmt and prettier, this adds a formatter on top.
-        treefmt.programs.shfmt.enable = true;
-
-        # Exercises the same merge for hooks.
-        pre-commit.settings.hooks.check-executables-have-shebangs.enable = true;
-
-        devShells.default = mkDevShell {
-          packages = [ pkgs.jq ];
-          env.EXAMPLE_CONSUMER = "1";
-        };
-
-        checks.shell = config.devShells.default;
-      };
     };
 }

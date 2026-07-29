@@ -16,8 +16,15 @@ concurrency:
 jobs:
   test:
     strategy:
+      fail-fast: false
+      # One runner per system in `nivisLib.defaultSystems`. `nix flake check`
+      # only checks the system it runs on, so a system with no runner here is a
+      # system nothing ever evaluates.
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest # x86_64-linux
+          - os: ubuntu-24.04-arm # aarch64-linux
+          - os: macos-latest # aarch64-darwin
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
 
@@ -33,3 +40,14 @@ jobs:
       # `nix flake check` on this repo never evaluates a subdirectory flake.
       - name: Validate the example consumer
         run: nix flake check ./examples/consumer
+
+      # Imports a single module rather than `flakeModules.default`, so it fails
+      # if any module stops being usable on its own.
+      - name: Validate the standalone-module example
+        run: nix flake check ./examples/standalone
+
+      # A path: input records the narHash of the tree it points at, so an
+      # example whose lock went stale would be re-locked in place and silently
+      # checked against something other than what is committed.
+      - name: Check the example lockfiles are current
+        run: git diff --exit-code

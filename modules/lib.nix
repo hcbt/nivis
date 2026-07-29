@@ -9,9 +9,10 @@
 # recursion the moment a project sets the option in a module that also consumes
 # one of the helpers.
 { nivisLib }:
-{ srcRoot
-, srcExcludes ? [ ]
-, devTools ? _pkgs: [ ]
+{
+  srcRoot,
+  srcExcludes ? [ ],
+  devTools ? _pkgs: [ ],
 }:
 { lib, ... }:
 let
@@ -21,15 +22,25 @@ let
   };
 in
 {
-  perSystem = { pkgs, ... }:
+  perSystem =
+    { pkgs, ... }:
     let
       # Toolchain the apps shell out to. Wrapped into each of them, so
       # `nix run` works outside the dev shell.
-      allDevTools = [ pkgs.git pkgs.coreutils ] ++ devTools pkgs;
+      allDevTools = [
+        pkgs.git
+        pkgs.coreutils
+      ]
+      ++ devTools pkgs;
 
       # Every app is a store script with its tools on PATH, so `nix run` works
       # regardless of what the caller's environment has.
-      mkShellApp = { name, text, extraInputs ? [ ] }:
+      mkShellApp =
+        {
+          name,
+          text,
+          extraInputs ? [ ],
+        }:
         pkgs.writeShellApplication {
           inherit name text;
           runtimeInputs = allDevTools ++ extraInputs;
@@ -37,12 +48,17 @@ in
 
       # An app whose body runs from the repo root, so it behaves the same no
       # matter which subdirectory `nix run` was invoked from.
-      mkRootedApp = args: mkShellApp (args // {
-        text = ''
-          cd "$(git rev-parse --show-toplevel)"
-          ${args.text}
-        '';
-      });
+      mkRootedApp =
+        args:
+        mkShellApp (
+          args
+          // {
+            text = ''
+              cd "$(git rev-parse --show-toplevel)"
+              ${args.text}
+            '';
+          }
+        );
     in
     {
       _module.args = {

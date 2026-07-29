@@ -6,10 +6,25 @@
 # Only the language-agnostic half lives here. A project adds its own hooks by
 # declaring them in its own module — the module system merges the two hook sets,
 # so nothing has to be re-stated to extend them.
-{ gitHooks }:
+{
+  gitHooks,
+  treefmtNix,
+  nivisLib,
+}:
 { ... }:
 {
-  imports = [ gitHooks.flakeModule ];
+  key = "nivis:git-hooks";
+
+  imports = [
+    gitHooks.flakeModule
+
+    # The treefmt hook below reads `config.treefmt.build.wrapper`, so this
+    # module cannot be imported on its own without the module that defines it.
+    # Importing the peer here is what makes `flakeModules.git-hooks` usable
+    # alone; the explicit keys collapse it back to one instance when
+    # `flakeModules.default` pulls in both.
+    (import ./treefmt.nix { inherit treefmtNix nivisLib; })
+  ];
 
   perSystem = { config, pkgs, ... }: {
     pre-commit = {

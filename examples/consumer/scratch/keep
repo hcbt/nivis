@@ -1,0 +1,3 @@
+This directory exists so `srcExcludes = [ "/scratch" ]` has something to
+exclude. `checks.src` asserts it is absent from the cleaned source tree, so
+dropping the exclusion turns that check red.
