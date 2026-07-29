@@ -64,14 +64,18 @@ rec {
       # Off by default: a repo with CI of its own already runs the checks, and
       # a second workflow would duplicate every build.
       checks ? false,
+      # True when `runner` is a self-hosted image that already ships Nix — the
+      # snowplow-built runners do. Installing Nix on top of it fails, so the
+      # install step is omitted rather than made conditional at run time.
+      nixPreinstalled ? false,
     }:
     {
       ".envrc" = envrc;
       ".github/dependabot.yml" = dependabot { inherit ecosystems; };
-      ".github/workflows/update-flake-lock.yml" = updateFlakeLock { inherit runner; };
+      ".github/workflows/update-flake-lock.yml" = updateFlakeLock { inherit runner nixPreinstalled; };
     }
     // lib.optionalAttrs checks {
-      ".github/workflows/nix-check.yml" = nixCheck { inherit runner; };
+      ".github/workflows/nix-check.yml" = nixCheck { inherit runner nixPreinstalled; };
     }
     // lib.optionalAttrs release {
       ".github/workflows/release-please.yml" = releasePleaseWorkflow { inherit runner; };
@@ -121,7 +125,7 @@ rec {
     '';
 
   updateFlakeLock =
-    { runner }:
+    { runner, nixPreinstalled }:
     ''
       name: Update flake.lock
 
@@ -142,9 +146,7 @@ rec {
 
           steps:
             - uses: actions/checkout@v7
-
-            - uses: cachix/install-nix-action@v31
-
+      ${installNix nixPreinstalled}
             - name: Update the lockfile
               run: nix flake update
 
@@ -172,8 +174,16 @@ rec {
                 token: ''${{ secrets.GH_TOKEN_FOR_UPDATES || secrets.GITHUB_TOKEN }}
     '';
 
+  # The install step, or nothing when the runner already has Nix.
+  # Written as an escaped string rather than an indented one: `''` strips the
+  # common indentation of the block it appears in, so an indented literal here
+  # would arrive at column 0 and produce invalid YAML.
+  installNix =
+    nixPreinstalled:
+    lib.optionalString (!nixPreinstalled) "\n      - uses: cachix/install-nix-action@v31\n";
+
   nixCheck =
-    { runner }:
+    { runner, nixPreinstalled }:
     ''
       name: Check
 
@@ -197,9 +207,7 @@ rec {
 
           steps:
             - uses: actions/checkout@v7
-
-            - uses: cachix/install-nix-action@v31
-
+      ${installNix nixPreinstalled}
             # Everything the flake declares, including the treefmt and hook
             # checks and nivis' repo-files-current.
             - run: nix flake check -L
