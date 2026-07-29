@@ -112,7 +112,7 @@ rec {
           timeout-minutes: 45
 
           steps:
-            - uses: actions/checkout@v5
+            - uses: actions/checkout@v7
 
             - uses: cachix/install-nix-action@v31
 
@@ -126,7 +126,7 @@ rec {
             - name: Validate flake outputs
               run: nix flake check
 
-            - uses: peter-evans/create-pull-request@v7
+            - uses: peter-evans/create-pull-request@v8
               with:
                 branch: update-flake-lock
                 title: "chore: update flake.lock"
@@ -168,7 +168,7 @@ rec {
           timeout-minutes: 10
 
           steps:
-            - uses: googleapis/release-please-action@v4
+            - uses: googleapis/release-please-action@v5
               with:
                 config-file: release-please-config.json
                 manifest-file: .release-please-manifest.json
