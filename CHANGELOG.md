@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.4.0](https://github.com/hcbt/nivis/compare/v0.3.2...v0.4.0) (2026-07-29)
+
+
+### Added
+
+* **repo:** optional generated nix flake check workflow ([#15](https://github.com/hcbt/nivis/issues/15)) ([de5dafb](https://github.com/hcbt/nivis/commit/de5dafbde530a4198f7998d65282386cb0cdaf71))
+
 ## [0.3.2](https://github.com/hcbt/nivis/compare/v0.3.1...v0.3.2) (2026-07-29)
 
 
