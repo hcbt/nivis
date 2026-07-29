@@ -17,6 +17,7 @@
   ecosystems ? [ ],
   release ? true,
   checks ? false,
+  nixPreinstalled ? false,
   initialVersion ? "0.0.0",
 }:
 { lib, self, ... }:
@@ -27,6 +28,7 @@ let
       ecosystems
       release
       checks
+      nixPreinstalled
       ;
   };
   paths = lib.attrNames files;
@@ -98,6 +100,21 @@ in
         # by whoever runs it. Naming it as a check builds it — this exact
         # failure shipped once already.
         checks.sync-repo = syncRepo;
+
+        # nivis itself takes the defaults for every option, so a parameter that
+        # `repoFiles` accepts but this module forgets to forward evaluates fine
+        # here and fails in the first consumer that sets it — which is how
+        # `nixPreinstalled` reached stakles broken. Generating the files with
+        # every option flipped is what exercises the whole signature.
+        checks.repo-files-all-options = stage "nivis-repo-files-all-options" (
+          nivisLib.repo.repoFiles {
+            runner = "nix-x64";
+            ecosystems = [ { ecosystem = "npm"; } ];
+            release = true;
+            checks = true;
+            nixPreinstalled = true;
+          }
+        );
 
         # A repo whose committed copies have drifted fails its own CI, which is
         # the only thing making "identical files per repo" true rather than
