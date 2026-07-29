@@ -65,3 +65,8 @@ repository's default branch rather than from a flake output.
   permanently at odds with the generator.
 - Releases come from release-please. Do not create tags by hand: merging its
   release PR is what tags, which keeps the tag on a commit already on master.
+- **Dependabot bumps land in generated files.** Its PRs edit
+  `.github/workflows/*.yml`, which `checks.repo-files-current` then rejects —
+  correctly, since the committed copy is not the source. Apply the version in
+  `lib/repo.nix`, run `sync-repo`, and close the bot's PR. The failing check is
+  the signal, not a problem to work around.
