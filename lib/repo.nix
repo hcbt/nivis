@@ -251,6 +251,12 @@ rec {
   releasePleaseConfig = builtins.toJSON {
     "$schema" = "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json";
     packages.".".release-type = "simple";
+    # Without this a repo starting from 0.0.0 jumps to 1.0.0 on its first
+    # `feat`, because release-please treats pre-1.0 as a prerelease series to
+    # be graduated. These repos stay in 0.x until something deliberately
+    # declares a stable interface.
+    bump-minor-pre-major = true;
+    bump-patch-for-minor-pre-major = true;
     changelog-sections = [
       {
         type = "feat";
