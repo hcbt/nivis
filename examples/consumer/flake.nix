@@ -16,6 +16,9 @@
         (nivis.flakeModules.default {
           srcRoot = ./.;
           srcExcludes = [ "/scratch" ];
+          # A subdirectory flake is not a repo — GitHub reads none of the
+          # generated files from here.
+          repo.enable = false;
           devTools = pkgs: [ pkgs.jq ];
         })
       ];

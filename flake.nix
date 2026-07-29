@@ -47,6 +47,7 @@
           inherit nivisLib;
           treefmtNix = treefmt-nix;
         };
+        repo = import ./modules/repo.nix { inherit nivisLib; };
         shell = import ./modules/shell.nix {
           inherit nivisLib;
           gitHooks = git-hooks;
@@ -57,7 +58,14 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = nivisLib.defaultSystems;
 
-      imports = [ (flakeModules.default { srcRoot = ./.; }) ];
+      imports = [
+        (flakeModules.default {
+          srcRoot = ./.;
+          # nivis eats its own generated files: the same workflows and
+          # dependabot manifest it hands every other repo.
+          repo.initialVersion = "0.2.0";
+        })
+      ];
 
       flake = {
         inherit flakeModules;

@@ -70,7 +70,8 @@ merges the two, so nothing has to be re-stated:
 | `flakeModules.git-hooks` | git-hooks.nix flake module, prek as the runner, the treefmt hook, `check-merge-conflicts`, `check-yaml`, `check-added-large-files`. | `treefmt`             |
 | `flakeModules.treefmt`   | treefmt-nix flake module, `projectRootFile`, `nixfmt`, `prettier`, the base excludes.                                               | —                     |
 | `flakeModules.shell`     | `_module.args.mkDevShell`.                                                                                                          | `git-hooks`,`treefmt` |
-| `flakeModules.default`   | All four. Takes the same parameters as `flakeModules.lib`.                                                                          | —                     |
+| `flakeModules.repo`      | `apps.sync-repo`, `checks.repo-files-current` — the GitHub-side files.                                                              | —                     |
+| `flakeModules.default`   | All five. Takes the same parameters as `flakeModules.lib`.                                                                          | —                     |
 
 Each is importable on its own: a module that reads a peer's `config` imports
 that peer, and explicit `key` attributes collapse the repeats when several
@@ -84,9 +85,44 @@ Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 | `srcExcludes` | no       | `[]`    | Extra path infixes dropped from that tree, on top of `/.direnv`.       |
 | `devTools`    | no       | `_: []` | `pkgs -> [package]`, on PATH in every app alongside git and coreutils. |
 
+`repo` is an attrset passed straight to `flakeModules.repo`:
+
+| Key              | Default         | Purpose                                                                |
+| ---------------- | --------------- | ---------------------------------------------------------------------- |
+| `enable`         | `true`          | Off for a flake that is not itself a repo (the examples in this tree). |
+| `runner`         | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted. |
+| `ecosystems`     | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/" }`.         |
+| `release`        | `true`          | Emit the release-please workflow and its config.                       |
+| `initialVersion` | `"0.0.0"`       | Starting version for a repo release-please has not seen before.        |
+
 `nivis.lib` also exports `defaultSystems`, `baseShellTools`, `baseFormatterExcludes`,
-`baseSrcExcludes` and `mkCleanSrc` as plain values, for a project that wants a
-piece without the module.
+`baseSrcExcludes`, `mkCleanSrc` and `repo` as plain values, for a project that
+wants a piece without the module.
+
+## The shared GitHub files
+
+`flakeModules.repo` owns the files Nix cannot: `.envrc`, `.github/dependabot.yml`,
+the `Update flake.lock` workflow, and the release-please workflow and config.
+
+```
+nix run .#sync-repo   # write them into this repo
+```
+
+They are written out and committed rather than left as flake outputs because
+GitHub reads workflows and `dependabot.yml` from the repository's own default
+branch — a generated file nothing commits is a file Actions never sees.
+
+`checks.repo-files-current` fails when a committed copy has drifted from what
+nivis would write, so "every repo carries identical files" is enforced by CI
+rather than by remembering. Change a workflow **in nivis**, then re-run
+`sync-repo` in each consuming repo. The generated paths are excluded from
+treefmt: prettier reformatting a workflow would put the committed copy
+permanently at odds with the generator, with no edit able to fix it.
+
+Releases are cut by release-please, not by hand — it maintains `CHANGELOG.md`
+from Conventional Commits and opens a release PR whose merge creates the tag.
+That also makes the "tagged a branch head a squash-merge then orphaned" mistake
+unrepresentable, since the tag can only come from a commit already on master.
 
 ## Design notes
 
