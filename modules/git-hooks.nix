@@ -45,6 +45,13 @@
           check-merge-conflicts.enable = true;
           check-yaml.enable = true;
           check-added-large-files.enable = true;
+
+          # treefmt only touches files it has a formatter for. These two cover
+          # everything else — no formatter knows about a .gitignore or a
+          # Dockerfile, and a missing trailing newline shows up as a spurious
+          # diff line in every later change to the file.
+          end-of-file-fixer.enable = true;
+          trim-trailing-whitespace.enable = true;
         };
       };
     };
