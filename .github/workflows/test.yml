@@ -1,0 +1,35 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Validate flake outputs
+        run: nix flake check
+
+      # The modules are only exercised by something that imports them, and
+      # `nix flake check` on this repo never evaluates a subdirectory flake.
+      - name: Validate the example consumer
+        run: nix flake check ./examples/consumer
