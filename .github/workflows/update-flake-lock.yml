@@ -30,7 +30,7 @@ jobs:
       - name: Validate flake outputs
         run: nix flake check
 
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         with:
           branch: update-flake-lock
           title: "chore: update flake.lock"
