@@ -10,6 +10,16 @@ Consumers should pin a tag rather than tracking `master`; see the README.
 
 ## [Unreleased]
 
+### Added
+
+- The `Update flake.lock` workflow runs `nix flake check` on the root flake and
+  both examples before opening its pull request, so a lockfile bump is verified
+  even when the PR is opened with `GITHUB_TOKEN` and Test therefore does not
+  run on it.
+- README section on upgrading a project to a new nivis: re-enter the dev shell
+  before committing, or the stale generated `.pre-commit-config.yaml` runs the
+  previous formatter.
+
 ## [0.2.0] - 2026-07-29
 
 ### Added
