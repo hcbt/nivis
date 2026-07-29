@@ -87,14 +87,15 @@ Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 
 `repo` is an attrset passed straight to `flakeModules.repo`:
 
-| Key              | Default         | Purpose                                                                |
-| ---------------- | --------------- | ---------------------------------------------------------------------- |
-| `enable`         | `true`          | Off for a flake that is not itself a repo (the examples in this tree). |
-| `runner`         | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted. |
-| `ecosystems`     | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/" }`.         |
-| `release`        | `true`          | Emit the release-please workflow and its config.                       |
-| `checks`         | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.  |
-| `initialVersion` | `"0.0.0"`       | Starting version for a repo release-please has not seen before.        |
+| Key               | Default         | Purpose                                                                |
+| ----------------- | --------------- | ---------------------------------------------------------------------- |
+| `enable`          | `true`          | Off for a flake that is not itself a repo (the examples in this tree). |
+| `runner`          | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted. |
+| `ecosystems`      | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/" }`.         |
+| `release`         | `true`          | Emit the release-please workflow and its config.                       |
+| `checks`          | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.  |
+| `nixPreinstalled` | `false`         | True for a self-hosted runner whose image already ships Nix.           |
+| `initialVersion`  | `"0.0.0"`       | Starting version for a repo release-please has not seen before.        |
 
 `nivis.lib` also exports `defaultSystems`, `baseShellTools`, `baseFormatterExcludes`,
 `baseSrcExcludes`, `mkCleanSrc` and `repo` as plain values, for a project that
