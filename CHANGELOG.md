@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.5.2](https://github.com/hcbt/nivis/compare/v0.5.1...v0.5.2) (2026-07-29)
+
+
+### Fixed
+
+* **repo:** keep repos in 0.x until they declare stability ([#21](https://github.com/hcbt/nivis/issues/21)) ([b465c30](https://github.com/hcbt/nivis/commit/b465c30cdbda3fe26369c5bf69c350583f7f8321))
+
 ## [0.5.1](https://github.com/hcbt/nivis/compare/v0.5.0...v0.5.1) (2026-07-29)
 
 
