@@ -10,11 +10,18 @@
 # out would leave nothing for Actions to run.
 { lib }:
 rec {
-  # Every path `sync-repo` may write, generated or seeded. treefmt excludes
-  # these: prettier reformatting a workflow would put the committed copy
-  # permanently at odds with what nivis generates, failing
+  # Paths treefmt must leave alone: everything `sync-repo` writes, plus the
+  # files another tool rewrites on its own schedule.
+  #
+  # For the generated files, prettier reformatting a workflow would put the
+  # committed copy permanently at odds with what nivis generates, failing
   # `checks.repo-files-current` with no edit anyone can make to fix it.
-  generatedPaths = [
+  #
+  # CHANGELOG.md is release-please's. It writes its own style on every release,
+  # so a formatted CHANGELOG fails `checks.treefmt` on master the moment a
+  # release lands — which is exactly how nivis' own 0.3.1 went red.
+  formatterExcludes = [
+    "CHANGELOG.md"
     ".envrc"
     ".github/dependabot.yml"
     ".github/workflows/update-flake-lock.yml"
