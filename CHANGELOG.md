@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.5.5](https://github.com/hcbt/nivis/compare/v0.5.4...v0.5.5) (2026-07-29)
+
+
+### Fixed
+
+* **repo:** sync into the flake's own directory, not the git root ([#27](https://github.com/hcbt/nivis/issues/27)) ([bf1a087](https://github.com/hcbt/nivis/commit/bf1a08744513fb07e0a9808edccac270d0dc4152))
+
 ## [0.5.4](https://github.com/hcbt/nivis/compare/v0.5.3...v0.5.4) (2026-07-29)
 
 
