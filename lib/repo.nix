@@ -20,16 +20,24 @@ rec {
   # CHANGELOG.md is release-please's. It writes its own style on every release,
   # so a formatted CHANGELOG fails `checks.treefmt` on master the moment a
   # release lands — which is exactly how nivis' own 0.3.1 went red.
-  formatterExcludes = [
-    "CHANGELOG.md"
-    ".envrc"
-    ".github/dependabot.yml"
-    ".github/workflows/nix-check.yml"
-    ".github/workflows/update-flake-lock.yml"
-    ".github/workflows/release-please.yml"
-    "release-please-config.json"
-    ".release-please-manifest.json"
-  ];
+  formatterExcludes =
+    let
+      paths = [
+        "CHANGELOG.md"
+        ".envrc"
+        ".github/dependabot.yml"
+        ".github/workflows/nix-check.yml"
+        ".github/workflows/update-flake-lock.yml"
+        ".github/workflows/release-please.yml"
+        "release-please-config.json"
+        ".release-please-manifest.json"
+      ];
+    in
+    # Both forms: treefmt matches a bare path against the project root only, so
+    # a repo that vendors another flake — nixplates' templates/ — would have
+    # that flake's generated files reformatted and permanently at odds with
+    # what nivis writes.
+    paths ++ map (p: "**/" + p) paths;
 
   # Files written only when absent, and never compared. Everything here is
   # state owned by a tool rather than configuration owned by nivis, so a repo's
