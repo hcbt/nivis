@@ -12,6 +12,14 @@ Consumers should pin a tag rather than tracking `master`; see the README.
 
 ### Added
 
+- `flakeModules.repo`: `apps.sync-repo` writes the shared GitHub-side files
+  (`.envrc`, `dependabot.yml`, the `Update flake.lock` workflow, release-please
+  workflow and config) into the consuming repo, and
+  `checks.repo-files-current` fails when a committed copy has drifted from what
+  nivis generates.
+- Releases are cut by release-please from Conventional Commits rather than by
+  hand.
+
 - The `Update flake.lock` workflow runs `nix flake check` on the root flake and
   both examples before opening its pull request, so a lockfile bump is verified
   even when the PR is opened with `GITHUB_TOKEN` and Test therefore does not

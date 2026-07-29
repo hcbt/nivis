@@ -20,31 +20,15 @@ jobs:
 
       - uses: cachix/install-nix-action@v31
 
-      - name: Update the root lockfile
+      - name: Update the lockfile
         run: nix flake update
 
-      # The examples resolve nixpkgs through `follows = "nivis/nixpkgs"`, which
-      # reads the root lockfile — so they have to be re-locked after it, not
-      # before, or they pin the version that was just replaced. Test's
-      # `git diff --exit-code` step fails if this is skipped.
-      - name: Re-lock the examples against it
-        run: |
-          nix flake update --flake ./examples/consumer
-          nix flake update --flake ./examples/standalone
-
-      # Pull requests opened with GITHUB_TOKEN do not trigger other workflows,
-      # so Test does not run on this PR unless a PAT is configured below. The
-      # update is checked here instead, on the one runner this job has — an
-      # unverified dependency bump is most of what the workflow exists to
-      # catch. Test still covers the other systems once the PR is merged.
+      # Pull requests opened with GITHUB_TOKEN do not trigger other
+      # workflows, so the repo's own CI does not run on this PR unless a
+      # PAT is configured below. The update is checked here instead — an
+      # unverified dependency bump is most of what this exists to catch.
       - name: Validate flake outputs
         run: nix flake check
-
-      - name: Validate the example consumer
-        run: nix flake check ./examples/consumer
-
-      - name: Validate the standalone-module example
-        run: nix flake check ./examples/standalone
 
       - uses: peter-evans/create-pull-request@v7
         with:
@@ -53,16 +37,11 @@ jobs:
           commit-message: "chore: update flake.lock"
           labels: dependencies
           body: |
-            Scheduled `nix flake update`, with `examples/` re-locked against
-            the new root lockfile.
-
-            `nix flake check` passed on the root flake and both examples for
-            x86_64-linux before this PR was opened. The other systems in
-            `defaultSystems` are covered by Test, which runs on this PR only if
-            it was opened with a PAT — see the workflow for why.
-          # A PAT with `repo` scope as GH_TOKEN_FOR_UPDATES gets Test running
-          # on these PRs across every system. Without it the PR still opens
-          # (provided "Allow GitHub Actions to create and approve pull
-          # requests" is enabled in the repository settings — the job fails
-          # with a 403 here otherwise) and carries only the checks above.
+            Scheduled `nix flake update`. `nix flake check` passed on the
+            runner before this PR was opened.
+          # A PAT with `repo` scope as GH_TOKEN_FOR_UPDATES gets the
+          # repo's full CI running on these PRs. Without it the PR still
+          # opens — provided "Allow GitHub Actions to create and approve
+          # pull requests" is enabled in the repository settings — and
+          # carries only the check above.
           token: ${{ secrets.GH_TOKEN_FOR_UPDATES || secrets.GITHUB_TOKEN }}

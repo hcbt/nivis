@@ -31,7 +31,7 @@
         prettier.enable = true;
       };
 
-      settings.global.excludes = nivisLib.baseFormatterExcludes;
+      settings.global.excludes = nivisLib.baseFormatterExcludes ++ nivisLib.repo.generatedPaths;
     };
   };
 }

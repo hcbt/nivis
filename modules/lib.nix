@@ -13,6 +13,9 @@
   srcRoot,
   srcExcludes ? [ ],
   devTools ? _pkgs: [ ],
+  # Consumed by ./repo.nix, accepted here so `flakeModules.default` takes one
+  # attrset rather than two.
+  repo ? { },
 }:
 { lib, ... }:
 let

@@ -1,6 +1,11 @@
 # Plain values and functions, usable without importing any flake module.
 { lib }:
 rec {
+  # The GitHub-side files — workflows, dependabot, release-please, .envrc.
+  # Kept in their own file because they are text templates rather than Nix
+  # values, and nothing else here needs to read them.
+  repo = import ./repo.nix { inherit lib; };
+
   # x86_64-darwin is deliberately absent: Apple's Intel machines are end of
   # life and CI has no runner for them, so declaring the system would promise
   # a platform nothing ever evaluates.

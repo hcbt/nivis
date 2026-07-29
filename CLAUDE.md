@@ -49,3 +49,19 @@ so a change here is a change to every consumer's build.
   nothing checks.
 - Anything that changes the module surface, the parameters, or `nivis.lib` goes
   in `CHANGELOG.md` under `[Unreleased]`.
+
+## The generated GitHub files
+
+`flakeModules.repo` owns `.envrc`, `.github/dependabot.yml`, and the
+`Update flake.lock` and release-please workflows, for this repo and every
+consumer. They are committed files, because GitHub reads workflows from the
+repository's default branch rather than from a flake output.
+
+- **Edit them in `lib/repo.nix`, never in the generated file.** Then run
+  `nix run .#sync-repo` here and in each consuming repo.
+- `checks.repo-files-current` fails on drift, so a hand-edited copy breaks CI.
+- The generated paths are in `nivisLib.repo.generatedPaths` and excluded from
+  treefmt — prettier reformatting a workflow would leave the committed copy
+  permanently at odds with the generator.
+- Releases come from release-please. Do not create tags by hand: merging its
+  release PR is what tags, which keeps the tag on a commit already on master.
