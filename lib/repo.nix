@@ -10,9 +10,9 @@
 # out would leave nothing for Actions to run.
 { lib }:
 rec {
-  # Every path `sync-repo` may write, regardless of settings. treefmt excludes
-  # these: they are generated, and prettier reformatting a workflow would put
-  # the committed copy permanently at odds with what nivis generates, failing
+  # Every path `sync-repo` may write, generated or seeded. treefmt excludes
+  # these: prettier reformatting a workflow would put the committed copy
+  # permanently at odds with what nivis generates, failing
   # `checks.repo-files-current` with no edit anyone can make to fix it.
   generatedPaths = [
     ".envrc"
@@ -23,7 +23,24 @@ rec {
     ".release-please-manifest.json"
   ];
 
-  # A repo-relative path -> file contents. `sync-repo` writes exactly these.
+  # Files written only when absent, and never compared. Everything here is
+  # state owned by a tool rather than configuration owned by nivis, so a repo's
+  # copy is *expected* to diverge from what this generates.
+  seedFiles =
+    {
+      release ? true,
+      initialVersion ? "0.0.0",
+    }:
+    lib.optionalAttrs release {
+      # release-please rewrites this on every release. Generating it from
+      # `initialVersion` and then checking it would fail the drift check on
+      # master immediately after the first release, permanently — which is
+      # exactly what happened on nivis' own 0.3.0.
+      ".release-please-manifest.json" = releasePleaseManifest { inherit initialVersion; };
+    };
+
+  # A repo-relative path -> file contents. `sync-repo` overwrites exactly these
+  # and `checks.repo-files-current` compares them.
   repoFiles =
     {
       # Runner label for generated workflows. The self-hosted `nix-x64` has a
@@ -35,8 +52,6 @@ rec {
       ecosystems ? [ ],
       # Emit the release-please workflow and its config.
       release ? true,
-      # Initial version for a repo release-please has not seen before.
-      initialVersion ? "0.0.0",
     }:
     {
       ".envrc" = envrc;
@@ -46,7 +61,6 @@ rec {
     // lib.optionalAttrs release {
       ".github/workflows/release-please.yml" = releasePleaseWorkflow { inherit runner; };
       "release-please-config.json" = releasePleaseConfig;
-      ".release-please-manifest.json" = releasePleaseManifest { inherit initialVersion; };
     };
 
   envrc = ''

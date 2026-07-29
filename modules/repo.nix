@@ -20,15 +20,14 @@
 }:
 { lib, self, ... }:
 let
-  files = nivisLib.repo.repoFiles {
-    inherit
-      runner
-      ecosystems
-      release
-      initialVersion
-      ;
-  };
+  files = nivisLib.repo.repoFiles { inherit runner ecosystems release; };
   paths = lib.attrNames files;
+
+  # State a tool owns, not configuration nivis owns: written once for a repo
+  # that has none, then left alone. Comparing these would fail the drift check
+  # the first time the tool updated its own file.
+  seeds = nivisLib.repo.seedFiles { inherit release initialVersion; };
+  seedPaths = lib.attrNames seeds;
 
   # The consuming flake's own source. Read through `self` rather than nivis'
   # `src` arg so this module stays importable without `flakeModules.lib`.
@@ -44,17 +43,22 @@ in
         # Each file is written to the store first and copied out by path, rather
         # than heredoc'd into the script: the contents include `$${{ … }}`,
         # backticks and quotes that a shell would otherwise interpret.
-        staged = pkgs.linkFarm "nivis-repo-files" (
-          lib.mapAttrsToList (name: text: {
-            name = name;
-            path = pkgs.writeText (lib.replaceStrings [ "/" ] [ "-" ] name) text;
-          }) files
-        );
+        stage =
+          label: set:
+          pkgs.linkFarm label (
+            lib.mapAttrsToList (name: text: {
+              name = name;
+              path = pkgs.writeText (lib.replaceStrings [ "/" ] [ "-" ] name) text;
+            }) set
+          );
+
+        staged = stage "nivis-repo-files" files;
+        stagedSeeds = stage "nivis-repo-seeds" seeds;
 
         quoted = lib.concatStringsSep " " (map lib.escapeShellArg paths);
-      in
-      {
-        apps.sync-repo.program = lib.getExe (mkRootedApp {
+        quotedSeeds = lib.concatStringsSep " " (map lib.escapeShellArg seedPaths);
+
+        syncRepo = mkRootedApp {
           name = "sync-repo";
           text = ''
             for f in ${quoted}; do
@@ -62,11 +66,30 @@ in
               install -m 644 "${staged}/$f" "$f"
               echo "wrote $f"
             done
+            # shellcheck disable=SC2043  # one seed today, a list in general
+            for f in ${quotedSeeds}; do
+              if [ -e "$f" ]; then
+                echo "kept $f (seeded once, owned by the tool that writes it)"
+                continue
+              fi
+              mkdir -p "$(dirname "$f")"
+              install -m 644 "${stagedSeeds}/$f" "$f"
+              echo "seeded $f"
+            done
             echo
-            echo "Review and commit. These files are generated — edit them in nivis,"
+            echo "Review and commit. The generated files are edited in nivis,"
             echo "not here, or the next sync-repo overwrites your changes."
           '';
-        });
+        };
+      in
+      {
+        apps.sync-repo.program = lib.getExe syncRepo;
+
+        # `nix flake check` evaluates apps but never builds them, so a script
+        # that fails writeShellApplication's shellcheck pass is only discovered
+        # by whoever runs it. Naming it as a check builds it — this exact
+        # failure shipped once already.
+        checks.sync-repo = syncRepo;
 
         # A repo whose committed copies have drifted fails its own CI, which is
         # the only thing making "identical files per repo" true rather than
