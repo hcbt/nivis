@@ -12,10 +12,9 @@ Consumers should pin a tag rather than tracking `master`; see the README.
 
 ## [0.3.0](https://github.com/hcbt/nivis/compare/v0.2.0...v0.3.0) (2026-07-29)
 
-
 ### Added
 
-* **repo:** generate the shared GitHub files from one place ([#3](https://github.com/hcbt/nivis/issues/3)) ([c35a78f](https://github.com/hcbt/nivis/commit/c35a78faddd41591030900cdc71020e9e03e8a93))
+- **repo:** generate the shared GitHub files from one place ([#3](https://github.com/hcbt/nivis/issues/3)) ([c35a78f](https://github.com/hcbt/nivis/commit/c35a78faddd41591030900cdc71020e9e03e8a93))
 
 ## [0.2.0] - 2026-07-29
 
