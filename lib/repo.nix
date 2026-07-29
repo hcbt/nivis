@@ -295,9 +295,13 @@ rec {
           hidden = true;
         }
       ];
-    };
+    }
+    + "\n";
 
-  releasePleaseManifest = { initialVersion }: builtins.toJSON { "." = initialVersion; };
+  # Trailing newline: without it the end-of-file-fixer hook appends one, and
+  # the committed copy then differs from what this generates — a file with two
+  # owners that no edit can satisfy.
+  releasePleaseManifest = { initialVersion }: builtins.toJSON { "." = initialVersion; } + "\n";
 
   # Ignores every repo needs. A project appends its own below the marker that
   # `sync-repo` writes; everything above it is regenerated.
