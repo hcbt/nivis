@@ -48,7 +48,7 @@ in
   key = "nivis:repo";
 
   perSystem =
-    { pkgs, mkRootedApp, ... }:
+    { pkgs, mkShellApp, ... }:
     lib.optionalAttrs enable (
       let
         # Each file is written to the store first and copied out by path, rather
@@ -69,9 +69,25 @@ in
         quoted = lib.concatStringsSep " " (map lib.escapeShellArg paths);
         quotedSeeds = lib.concatStringsSep " " (map lib.escapeShellArg seedPaths);
 
-        syncRepo = mkRootedApp {
+        # Deliberately NOT mkRootedApp: that roots at the git toplevel, which is
+        # the wrong directory for a flake that lives in a subdirectory of a
+        # larger repo — a template inside a catalog would have its files
+        # written to the catalog root instead of its own. Walk up to the
+        # nearest flake.nix instead, which is this flake's root either way.
+        syncRepo = mkShellApp {
           name = "sync-repo";
           text = ''
+            root="$PWD"
+            while [ ! -e "$root/flake.nix" ]; do
+              if [ "$root" = "/" ]; then
+                echo "no flake.nix in $PWD or any parent" >&2
+                exit 1
+              fi
+              root="$(dirname "$root")"
+            done
+            cd "$root"
+            echo "syncing $root"
+
             for f in ${quoted}; do
               mkdir -p "$(dirname "$f")"
               install -m 644 "${staged}/$f" "$f"

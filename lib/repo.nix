@@ -261,7 +261,10 @@ rec {
       # be graduated. These repos stay in 0.x until something deliberately
       # declares a stable interface.
       bump-minor-pre-major = true;
-      bump-patch-for-minor-pre-major = true;
+      # feat -> minor, fix -> patch, breaking -> minor while under 1.0. Setting
+      # this true would make a feat a patch bump too, which throws away the only
+      # signal the commit types carry.
+      bump-patch-for-minor-pre-major = false;
       # The bump-*-pre-major options only govern bumping FROM an existing
       # version. A repo release-please has never released is a separate case
       # with its own default of 1.0.0 — which is how stakles' first release PR
