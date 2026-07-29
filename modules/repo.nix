@@ -16,11 +16,19 @@
   runner ? "ubuntu-latest",
   ecosystems ? [ ],
   release ? true,
+  checks ? false,
   initialVersion ? "0.0.0",
 }:
 { lib, self, ... }:
 let
-  files = nivisLib.repo.repoFiles { inherit runner ecosystems release; };
+  files = nivisLib.repo.repoFiles {
+    inherit
+      runner
+      ecosystems
+      release
+      checks
+      ;
+  };
   paths = lib.attrNames files;
 
   # State a tool owns, not configuration nivis owns: written once for a repo
