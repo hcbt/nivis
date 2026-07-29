@@ -106,6 +106,27 @@ piece without the module.
   owning the output would need an option per difference. Projects keep their own
   `shells.nix`.
 
+## Upgrading a project to a new nivis
+
+Bump the pin, then re-enter the dev shell **before** running anything else:
+
+```
+nix flake update nivis
+nix develop
+```
+
+The order matters. Entering the shell is what rewrites the project's generated
+`.pre-commit-config.yaml`; until then it still points at the store path built
+from the _old_ nivis. A stale one runs the old formatter, so `git commit`
+reformats the tree straight back and the hook fails with `files were modified
+by this hook` — while `nix flake check` passes, because the flake builds its
+config fresh. If that happens, `nix develop` once and re-run.
+
+Upgrading across v0.2.0 also reformats every `.nix` file in the project, since
+that release replaced `nixpkgs-fmt` with `nixfmt`. Run `nix fmt` and commit the
+result on its own, before any real work, so the reformat does not bury a real
+diff.
+
 ## Develop
 
 ```
