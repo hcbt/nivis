@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.5.4](https://github.com/hcbt/nivis/compare/v0.5.3...v0.5.4) (2026-07-29)
+
+
+### Added
+
+* **repo:** end-of-file and trailing-whitespace hooks, and newline-terminated JSON ([#25](https://github.com/hcbt/nivis/issues/25)) ([988e867](https://github.com/hcbt/nivis/commit/988e867ab43099aa97904c75cad876d34498e9b6))
+
 ## [0.5.3](https://github.com/hcbt/nivis/compare/v0.5.2...v0.5.3) (2026-07-29)
 
 
