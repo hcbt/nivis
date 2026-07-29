@@ -14,7 +14,14 @@
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = inputs@{ flake-parts, nixpkgs, git-hooks, treefmt-nix, ... }:
+  outputs =
+    inputs@{
+      flake-parts,
+      nixpkgs,
+      git-hooks,
+      treefmt-nix,
+      ...
+    }:
     let
       nivisLib = import ./lib { inherit (nixpkgs) lib; };
 
@@ -31,12 +38,20 @@
           treefmtNix = treefmt-nix;
         };
         lib = import ./modules/lib.nix { inherit nivisLib; };
-        git-hooks = import ./modules/git-hooks.nix { gitHooks = git-hooks; };
+        git-hooks = import ./modules/git-hooks.nix {
+          inherit nivisLib;
+          gitHooks = git-hooks;
+          treefmtNix = treefmt-nix;
+        };
         treefmt = import ./modules/treefmt.nix {
           inherit nivisLib;
           treefmtNix = treefmt-nix;
         };
-        shell = import ./modules/shell.nix { inherit nivisLib; };
+        shell = import ./modules/shell.nix {
+          inherit nivisLib;
+          gitHooks = git-hooks;
+          treefmtNix = treefmt-nix;
+        };
       };
     in
     flake-parts.lib.mkFlake { inherit inputs; } {

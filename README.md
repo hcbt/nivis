@@ -9,7 +9,10 @@ parts that are actually language-specific.
 
 ```nix
 {
-  inputs.nivis.url = "github:hcbt/nivis";
+  # Pin a tag. `github:hcbt/nivis` without one tracks master, so a change here
+  # lands in the project on its next `nix flake update` with nothing to read
+  # about what moved.
+  inputs.nivis.url = "github:hcbt/nivis/v0.2.0";
 
   # flake-parts builds `pkgs` from the CONSUMING flake's own nixpkgs input, so
   # this cannot be dropped. Point it somewhere else to pin nixpkgs yourself.
@@ -39,7 +42,7 @@ The project's own modules then extend what nivis set up — the module system
 merges the two, so nothing has to be re-stated:
 
 ```nix
-# nix/treefmt.nix — nivis already enabled nixpkgs-fmt and prettier
+# nix/treefmt.nix — nivis already enabled nixfmt and prettier
 { ... }:
 {
   perSystem.treefmt.programs.gofmt.enable = true;
@@ -61,13 +64,17 @@ merges the two, so nothing has to be re-stated:
 
 ## What the modules provide
 
-| Module                   | Provides                                                                                                                            |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `flakeModules.lib`       | `_module.args`: `src`, `devTools`, `mkShellApp`, `mkRootedApp`, `mkApp`.                                                            |
-| `flakeModules.git-hooks` | git-hooks.nix flake module, prek as the runner, the treefmt hook, `check-merge-conflicts`, `check-yaml`, `check-added-large-files`. |
-| `flakeModules.treefmt`   | treefmt-nix flake module, `projectRootFile`, `nixpkgs-fmt`, `prettier`, the base excludes.                                          |
-| `flakeModules.shell`     | `_module.args.mkDevShell`.                                                                                                          |
-| `flakeModules.default`   | All four. Takes the same parameters as `flakeModules.lib`.                                                                          |
+| Module                   | Provides                                                                                                                            | Also pulls in         |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `flakeModules.lib`       | `_module.args`: `src`, `devTools`, `mkShellApp`, `mkRootedApp`, `mkApp`.                                                            | —                     |
+| `flakeModules.git-hooks` | git-hooks.nix flake module, prek as the runner, the treefmt hook, `check-merge-conflicts`, `check-yaml`, `check-added-large-files`. | `treefmt`             |
+| `flakeModules.treefmt`   | treefmt-nix flake module, `projectRootFile`, `nixfmt`, `prettier`, the base excludes.                                               | —                     |
+| `flakeModules.shell`     | `_module.args.mkDevShell`.                                                                                                          | `git-hooks`,`treefmt` |
+| `flakeModules.default`   | All four. Takes the same parameters as `flakeModules.lib`.                                                                          | —                     |
+
+Each is importable on its own: a module that reads a peer's `config` imports
+that peer, and explicit `key` attributes collapse the repeats when several
+routes lead to the same module. `examples/standalone` is the test.
 
 Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 
@@ -104,8 +111,15 @@ piece without the module.
 ```
 nix develop
 nix flake check
+nix flake check ./examples/consumer
+nix flake check ./examples/standalone
 nix fmt
 ```
 
-`examples/consumer` is an integration test: a flake that consumes this one
-through `path:../..` and exercises every module.
+`nix flake check` on the root never evaluates a subdirectory flake, so both
+examples have to be named. Each consumes this flake through `path:../..`:
+`consumer` imports `flakeModules.default` and exercises every module,
+`standalone` imports a single module and fails if the modules stop being
+usable individually.
+
+Releases are tagged and recorded in [CHANGELOG.md](CHANGELOG.md).

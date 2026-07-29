@@ -1,10 +1,12 @@
 # Plain values and functions, usable without importing any flake module.
 { lib }:
 rec {
+  # x86_64-darwin is deliberately absent: Apple's Intel machines are end of
+  # life and CI has no runner for them, so declaring the system would promise
+  # a platform nothing ever evaluates.
   defaultSystems = [
     "x86_64-linux"
     "aarch64-linux"
-    "x86_64-darwin"
     "aarch64-darwin"
   ];
 
@@ -39,11 +41,18 @@ rec {
   # The tree checks and packages copy in. Path-infix based rather than
   # extension based, because what has to be dropped is whole build/cache
   # directories.
-  mkCleanSrc = { src, excludes ? [ ] }:
+  mkCleanSrc =
+    {
+      src,
+      excludes ? [ ],
+    }:
     lib.cleanSourceWith {
       inherit src;
-      filter = path: _type:
-        let s = toString path; in
-          !(lib.any (infix: lib.hasInfix infix s) (baseSrcExcludes ++ excludes));
+      filter =
+        path: _type:
+        let
+          s = toString path;
+        in
+        !(lib.any (infix: lib.hasInfix infix s) (baseSrcExcludes ++ excludes));
     };
 }

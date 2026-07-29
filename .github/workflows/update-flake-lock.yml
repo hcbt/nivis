@@ -1,0 +1,48 @@
+name: Update flake.lock
+
+on:
+  schedule:
+    # Mondays, 04:00 UTC.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v31
+
+      - name: Update the root lockfile
+        run: nix flake update
+
+      # The examples resolve nixpkgs through `follows = "nivis/nixpkgs"`, which
+      # reads the root lockfile — so they have to be re-locked after it, not
+      # before, or they pin the version that was just replaced. Test's
+      # `git diff --exit-code` step fails if this is skipped.
+      - name: Re-lock the examples against it
+        run: |
+          nix flake update --flake ./examples/consumer
+          nix flake update --flake ./examples/standalone
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: update-flake-lock
+          title: "chore: update flake.lock"
+          commit-message: "chore: update flake.lock"
+          labels: dependencies
+          body: |
+            Scheduled `nix flake update`, with `examples/` re-locked against
+            the new root lockfile.
+          # Pull requests opened with the default GITHUB_TOKEN do not trigger
+          # other workflows, so Test would never run on them. Set a PAT with
+          # `repo` scope as GH_TOKEN_FOR_UPDATES to get CI on these PRs;
+          # without it the PR still opens, it just arrives unchecked.
+          token: ${{ secrets.GH_TOKEN_FOR_UPDATES || secrets.GITHUB_TOKEN }}

@@ -9,6 +9,13 @@
 { treefmtNix, nivisLib }:
 { ... }:
 {
+  # Explicit key so this module collapses to a single instance when it arrives
+  # by more than one route — `flakeModules.default` imports it directly, and
+  # git-hooks and shell each import it so they stay usable on their own. The
+  # module system deduplicates imports by `key`; without one, every route would
+  # be a distinct anonymous module and the repeated definitions would conflict.
+  key = "nivis:treefmt";
+
   imports = [ treefmtNix.flakeModule ];
 
   perSystem = {
@@ -18,7 +25,9 @@
       projectRootFile = "flake.nix";
 
       programs = {
-        nixpkgs-fmt.enable = true;
+        # nixfmt is the RFC 166 formatter. nixpkgs-fmt, which this replaced, is
+        # no longer maintained.
+        nixfmt.enable = true;
         prettier.enable = true;
       };
 
