@@ -12,7 +12,7 @@ parts that are actually language-specific.
   # Pin a tag. `github:hcbt/nivis` without one tracks master, so a change here
   # lands in the project on its next `nix flake update` with nothing to read
   # about what moved.
-  inputs.nivis.url = "github:hcbt/nivis/v0.1.0";
+  inputs.nivis.url = "github:hcbt/nivis/v0.2.0";
 
   # flake-parts builds `pkgs` from the CONSUMING flake's own nixpkgs input, so
   # this cannot be dropped. Point it somewhere else to pin nixpkgs yourself.

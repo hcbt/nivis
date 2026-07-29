@@ -10,6 +10,8 @@ Consumers should pin a tag rather than tracking `master`; see the README.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-29
+
 ### Added
 
 - `examples/standalone`, a second integration test that imports a single
@@ -35,4 +37,17 @@ Consumers should pin a tag rather than tracking `master`; see the README.
 
 ### Removed
 
-- `x86_64-darwin` from `nivisLib.defaultSystems`.
+- `x86_64-darwin` from `nivisLib.defaultSystems`. A consumer that still builds
+  for Intel macOS has to pass its own `systems` list.
+
+## [0.1.0] - 2026-07-29
+
+### Added
+
+- Initial flake-parts scaffolding: the git-hooks and treefmt flake modules, the
+  `mkShellApp` / `mkRootedApp` / `mkApp` helpers, the cleaned source tree, and
+  the dev-shell baseline.
+
+[unreleased]: https://github.com/hcbt/nivis/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/hcbt/nivis/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/hcbt/nivis/releases/tag/v0.1.0
