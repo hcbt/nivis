@@ -60,9 +60,10 @@ repository's default branch rather than from a flake output.
 - **Edit them in `lib/repo.nix`, never in the generated file.** Then run
   `nix run .#sync-repo` here and in each consuming repo.
 - `checks.repo-files-current` fails on drift, so a hand-edited copy breaks CI.
-- The generated paths are in `nivisLib.repo.generatedPaths` and excluded from
-  treefmt — prettier reformatting a workflow would leave the committed copy
-  permanently at odds with the generator.
+- `nivisLib.repo.formatterExcludes` lists what treefmt must leave alone: the
+  generated files, plus `CHANGELOG.md`. prettier reformatting a workflow would
+  leave the committed copy permanently at odds with the generator, and a
+  formatted CHANGELOG fails `checks.treefmt` on master after every release.
 - Releases come from release-please. Do not create tags by hand: merging its
   release PR is what tags, which keeps the tag on a commit already on master.
 - **Dependabot bumps land in generated files.** Its PRs edit
