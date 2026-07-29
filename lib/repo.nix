@@ -24,6 +24,7 @@ rec {
     "CHANGELOG.md"
     ".envrc"
     ".github/dependabot.yml"
+    ".github/workflows/nix-check.yml"
     ".github/workflows/update-flake-lock.yml"
     ".github/workflows/release-please.yml"
     "release-please-config.json"
@@ -59,11 +60,18 @@ rec {
       ecosystems ? [ ],
       # Emit the release-please workflow and its config.
       release ? true,
+      # Emit a workflow that runs `nix flake check` on push and pull request.
+      # Off by default: a repo with CI of its own already runs the checks, and
+      # a second workflow would duplicate every build.
+      checks ? false,
     }:
     {
       ".envrc" = envrc;
       ".github/dependabot.yml" = dependabot { inherit ecosystems; };
       ".github/workflows/update-flake-lock.yml" = updateFlakeLock { inherit runner; };
+    }
+    // lib.optionalAttrs checks {
+      ".github/workflows/nix-check.yml" = nixCheck { inherit runner; };
     }
     // lib.optionalAttrs release {
       ".github/workflows/release-please.yml" = releasePleaseWorkflow { inherit runner; };
@@ -162,6 +170,39 @@ rec {
                 # pull requests" is enabled in the repository settings — and
                 # carries only the check above.
                 token: ''${{ secrets.GH_TOKEN_FOR_UPDATES || secrets.GITHUB_TOKEN }}
+    '';
+
+  nixCheck =
+    { runner }:
+    ''
+      name: Check
+
+      on:
+        pull_request:
+        push:
+          branches:
+            - "**"
+
+      permissions:
+        contents: read
+
+      concurrency:
+        group: ''${{ github.workflow }}-''${{ github.ref }}
+        cancel-in-progress: true
+
+      jobs:
+        check:
+          runs-on: ${runner}
+          timeout-minutes: 45
+
+          steps:
+            - uses: actions/checkout@v7
+
+            - uses: cachix/install-nix-action@v31
+
+            # Everything the flake declares, including the treefmt and hook
+            # checks and nivis' repo-files-current.
+            - run: nix flake check -L
     '';
 
   # release-please reads Conventional Commits, maintains CHANGELOG.md, and

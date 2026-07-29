@@ -93,6 +93,7 @@ Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 | `runner`         | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted. |
 | `ecosystems`     | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/" }`.         |
 | `release`        | `true`          | Emit the release-please workflow and its config.                       |
+| `checks`         | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.  |
 | `initialVersion` | `"0.0.0"`       | Starting version for a repo release-please has not seen before.        |
 
 `nivis.lib` also exports `defaultSystems`, `baseShellTools`, `baseFormatterExcludes`,
