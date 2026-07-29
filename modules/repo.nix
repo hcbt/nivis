@@ -18,7 +18,7 @@
   release ? true,
   checks ? false,
   nixPreinstalled ? false,
-  initialVersion ? "0.0.0",
+  initialVersion ? "0.1.0",
 }:
 { lib, self, ... }:
 let
@@ -29,6 +29,7 @@ let
       release
       checks
       nixPreinstalled
+      initialVersion
       ;
   };
   paths = lib.attrNames files;
@@ -113,6 +114,7 @@ in
             release = true;
             checks = true;
             nixPreinstalled = true;
+            initialVersion = "9.9.9";
           }
         );
 

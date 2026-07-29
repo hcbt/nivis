@@ -37,7 +37,7 @@ rec {
   seedFiles =
     {
       release ? true,
-      initialVersion ? "0.0.0",
+      initialVersion ? "0.1.0",
     }:
     lib.optionalAttrs release {
       # release-please rewrites this on every release. Generating it from
@@ -60,6 +60,9 @@ rec {
       ecosystems ? [ ],
       # Emit the release-please workflow and its config.
       release ? true,
+      # Version for a repo release-please has not released before. Seeds the
+      # manifest and sets `initial-version`; both are needed, see below.
+      initialVersion ? "0.1.0",
       # Emit a workflow that runs `nix flake check` on push and pull request.
       # Off by default: a repo with CI of its own already runs the checks, and
       # a second workflow would duplicate every build.
@@ -79,7 +82,7 @@ rec {
     }
     // lib.optionalAttrs release {
       ".github/workflows/release-please.yml" = releasePleaseWorkflow { inherit runner; };
-      "release-please-config.json" = releasePleaseConfig;
+      "release-please-config.json" = releasePleaseConfig { inherit initialVersion; };
     };
 
   envrc = ''
@@ -248,44 +251,51 @@ rec {
   # `simple` is the release type for a repo with no language-native manifest to
   # bump — it maintains CHANGELOG.md and the tag, and nothing else. The Nix
   # repos here have no version field anywhere that needs rewriting.
-  releasePleaseConfig = builtins.toJSON {
-    "$schema" = "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json";
-    packages.".".release-type = "simple";
-    # Without this a repo starting from 0.0.0 jumps to 1.0.0 on its first
-    # `feat`, because release-please treats pre-1.0 as a prerelease series to
-    # be graduated. These repos stay in 0.x until something deliberately
-    # declares a stable interface.
-    bump-minor-pre-major = true;
-    bump-patch-for-minor-pre-major = true;
-    changelog-sections = [
-      {
-        type = "feat";
-        section = "Added";
-      }
-      {
-        type = "fix";
-        section = "Fixed";
-      }
-      {
-        type = "perf";
-        section = "Performance";
-      }
-      {
-        type = "refactor";
-        section = "Changed";
-      }
-      {
-        type = "chore";
-        section = "Maintenance";
-        hidden = true;
-      }
-      {
-        type = "docs";
-        section = "Documentation";
-        hidden = true;
-      }
-    ];
-  };
+  releasePleaseConfig =
+    { initialVersion }:
+    builtins.toJSON {
+      "$schema" = "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json";
+      packages.".".release-type = "simple";
+      # Without this a repo starting from 0.0.0 jumps to 1.0.0 on its first
+      # `feat`, because release-please treats pre-1.0 as a prerelease series to
+      # be graduated. These repos stay in 0.x until something deliberately
+      # declares a stable interface.
+      bump-minor-pre-major = true;
+      bump-patch-for-minor-pre-major = true;
+      # The bump-*-pre-major options only govern bumping FROM an existing
+      # version. A repo release-please has never released is a separate case
+      # with its own default of 1.0.0 — which is how stakles' first release PR
+      # came out claiming a stable interface.
+      initial-version = initialVersion;
+      changelog-sections = [
+        {
+          type = "feat";
+          section = "Added";
+        }
+        {
+          type = "fix";
+          section = "Fixed";
+        }
+        {
+          type = "perf";
+          section = "Performance";
+        }
+        {
+          type = "refactor";
+          section = "Changed";
+        }
+        {
+          type = "chore";
+          section = "Maintenance";
+          hidden = true;
+        }
+        {
+          type = "docs";
+          section = "Documentation";
+          hidden = true;
+        }
+      ];
+    };
 
   releasePleaseManifest = { initialVersion }: builtins.toJSON { "." = initialVersion; };
 
