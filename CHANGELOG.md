@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.7.0](https://github.com/hcbt/nivis/compare/v0.6.0...v0.7.0) (2026-07-30)
+
+
+### Added
+
+* **repo:** let an ecosystem declare dependabot ignores ([#36](https://github.com/hcbt/nivis/issues/36)) ([b8eb0e8](https://github.com/hcbt/nivis/commit/b8eb0e8130db74777b67d22b3f666c4543e45b3d))
+
 ## [0.6.0](https://github.com/hcbt/nivis/compare/v0.5.6...v0.6.0) (2026-07-30)
 
 
