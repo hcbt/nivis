@@ -6,12 +6,16 @@ rec {
   # values, and nothing else here needs to read them.
   repo = import ./repo.nix { inherit lib; };
 
-  # x86_64-darwin is deliberately absent: Apple's Intel machines are end of
-  # life and CI has no runner for them, so declaring the system would promise
-  # a platform nothing ever evaluates.
+  # Only what something actually checks. `nix flake check` covers the system it
+  # runs on, so every entry here needs a runner or it is a support claim nothing
+  # verifies.
+  #
+  # x86_64-darwin: Apple's Intel machines are end of life.
+  # aarch64-linux: nothing here targets it — the cluster and its images are
+  # x86_64, dev machines are aarch64-darwin — and covering it meant a third
+  # hosted runner per job for a platform no output ships to.
   defaultSystems = [
     "x86_64-linux"
-    "aarch64-linux"
     "aarch64-darwin"
   ];
 
