@@ -126,7 +126,20 @@ in
         checks.repo-files-all-options = stage "nivis-repo-files-all-options" (
           nivisLib.repo.repoFiles {
             runner = "nix-x64";
-            ecosystems = [ { ecosystem = "npm"; } ];
+            ecosystems = [
+              {
+                ecosystem = "npm";
+                # Both `ignore` forms, since the bare one and the
+                # version-constrained one render differently.
+                ignore = [
+                  { dependency = "@playwright/test"; }
+                  {
+                    dependency = "typescript";
+                    versions = [ "7.x" ];
+                  }
+                ];
+              }
+            ];
             release = true;
             checks = true;
             nixPreinstalled = true;
