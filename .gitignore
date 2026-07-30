@@ -3,6 +3,10 @@ result
 result-*
 .DS_Store
 
+# `bun install` in examples/consumer, which is a bun project so the bun module
+# has something to be tested against
+node_modules/
+
 # written by prek when the dev shell is entered
 .pre-commit-config.yaml
 
