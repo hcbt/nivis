@@ -47,8 +47,12 @@ so a change here is a change to every consumer's build.
 - Changing `nivisLib.defaultSystems` means changing the CI matrix in
   `.github/workflows/test.yml` to match; a system with no runner is a system
   nothing checks.
-- Anything that changes the module surface, the parameters, or `nivis.lib` goes
-  in `CHANGELOG.md` under `[Unreleased]`.
+- **Do not hand-write `CHANGELOG.md`.** release-please owns it from 0.3.0
+  onward and inserts each entry above the newest version heading, so a
+  hand-written `[Unreleased]` section ends up orphaned below the latest release.
+  A change to the module surface, the parameters, or `nivis.lib` is described in
+  its Conventional Commit subject and body instead — that is what release-please
+  reads to build the entry.
 
 ## The generated GitHub files
 
