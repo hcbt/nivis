@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.6.0](https://github.com/hcbt/nivis/compare/v0.5.6...v0.6.0) (2026-07-30)
+
+
+### Added
+
+* **bun:** add flakeModules.bun for bun projects via bun2nix ([#32](https://github.com/hcbt/nivis/issues/32)) ([b57d17e](https://github.com/hcbt/nivis/commit/b57d17e2c13218ed09f6d8166716b1c3422a5be3))
+
 ## [0.5.6](https://github.com/hcbt/nivis/compare/v0.5.5...v0.5.6) (2026-07-29)
 
 
