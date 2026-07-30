@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.7.1](https://github.com/hcbt/nivis/compare/v0.7.0...v0.7.1) (2026-07-30)
+
+
+### Fixed
+
+* **repo:** stop the generated Check workflow running every job twice ([#38](https://github.com/hcbt/nivis/issues/38)) ([ab924fe](https://github.com/hcbt/nivis/commit/ab924feb14b5c5563de0cae5ddddbe6fddd6e613))
+
 ## [0.7.0](https://github.com/hcbt/nivis/compare/v0.6.0...v0.7.0) (2026-07-30)
 
 
