@@ -147,6 +147,46 @@ in
           }
         );
 
+        # `repo-files-all-options` proves the workflows RENDER; nothing proved
+        # what they trigger on. A push trigger of `"**"` fires alongside
+        # `pull_request` on the same commit, and the concurrency group cannot
+        # dedupe them because `github.ref` differs between the two events — so
+        # every job runs twice, in every consumer, and the only symptom is a
+        # runner bill. That is not a failure any check would otherwise catch.
+        checks.repo-files-triggers =
+          let
+            # Both variants, since `nixPreinstalled` inserts a step into the
+            # same indentation-sensitive block.
+            rendered = lib.mapAttrsToList (name: args: pkgs.writeText name (nivisLib.repo.nixCheck args)) {
+              "nix-check-hosted.yml" = {
+                runner = "ubuntu-latest";
+                nixPreinstalled = false;
+              };
+              "nix-check-selfhosted.yml" = {
+                runner = "nix-x64";
+                nixPreinstalled = true;
+              };
+            };
+          in
+          pkgs.runCommand "repo-files-triggers" { nativeBuildInputs = [ pkgs.yq-go ]; } ''
+            for f in ${lib.concatStringsSep " " rendered}; do
+              # Parsed rather than grepped: a trigger block that renders as
+              # invalid YAML is the other half of what can go wrong here, and
+              # `repo-files-current` compares text without ever parsing it.
+              # `-I=0` keeps the JSON on one line so this stays a string compare.
+              branches="$(yq -o=json -I=0 '.on.push.branches' "$f")"
+              if [ "$branches" != '["master"]' ]; then
+                echo "$f: push triggers on $branches, not [\"master\"] alone." >&2
+                echo "A branch with an open PR would run every job twice." >&2
+                exit 1
+              fi
+              # The other half of the contract: dropping `pull_request` would
+              # leave a PR branch with no CI at all.
+              yq -e '.on | has("pull_request")' "$f" > /dev/null
+            done
+            touch $out
+          '';
+
         # A repo whose committed copies have drifted fails its own CI, which is
         # the only thing making "identical files per repo" true rather than
         # aspirational.

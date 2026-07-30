@@ -2,9 +2,18 @@ name: Test
 
 on:
   pull_request:
+  # Only master, for the reason spelled out in `nixCheck` in lib/repo.nix: a
+  # push to a branch with an open PR fires this *and* `pull_request` on the same
+  # commit, and the concurrency group below cannot dedupe them because
+  # `github.ref` differs between the two events. This matrix is two runners at
+  # ~4 minutes, so the duplicate was the most expensive job in the repo.
+  #
+  # Nothing loses coverage: a branch with a PR is tested by `pull_request`, and
+  # master is tested on push. A branch with NO open PR gets no CI until one is
+  # opened — the deliberate trade.
   push:
     branches:
-      - "**"
+      - master
 
 permissions:
   contents: read
