@@ -15,12 +15,23 @@
       imports = [
         (nivis.flakeModules.default {
           srcRoot = ./.;
-          srcExcludes = [ "/scratch" ];
+          srcExcludes = [
+            "/scratch"
+            # `bun install` here is what produces the lockfile the bun module is
+            # tested against; the tree the derivations copy in must not carry
+            # its output.
+            "/node_modules"
+          ];
           # A subdirectory flake is not a repo — GitHub reads none of the
           # generated files from here.
           repo.enable = false;
           devTools = pkgs: [ pkgs.jq ];
         })
+
+        # Language-specific, so it is not part of `default` and is imported on
+        # top of it. The defaults find `bun.lock` and `bun.nix` at this flake's
+        # root, which is where they are.
+        (nivis.flakeModules.bun { })
       ];
 
       perSystem =
@@ -31,6 +42,9 @@
           mkApp,
           mkRootedApp,
           mkDevShell,
+          bunDeps,
+          bunTools,
+          mkBunDerivation,
           ...
         }:
         {
@@ -59,6 +73,42 @@
             };
 
             shell = config.devShells.default;
+
+            # Exercises `mkBunDerivation` end to end: bun2nix' hook lays the
+            # `bunDeps` cache down, `bun install` resolves out of it with no
+            # network, and the build then runs a script that cannot work unless
+            # the dependency really landed in `node_modules`.
+            #
+            # `checks.bun-nix-current` and `checks.sync-bun-nix` come from the
+            # module itself, so the drift check and the regenerate app are
+            # covered here too.
+            bun = mkBunDerivation {
+              pname = "example-consumer-bun";
+              version = "0.1.0";
+              inherit src;
+              build = ''
+                bun index.js | tee out.txt
+                grep -qx 'nivis bun ok 1m' out.txt
+              '';
+              install = "install -Dm644 out.txt $out/out.txt";
+            };
+
+            # The one-dependency-fetch-per-project property, executed rather
+            # than assumed: a second output must reference the SAME cache. It
+            # regressed the moment `mkBunDerivation` built `bunDeps` per call.
+            bun-deps-shared =
+              let
+                other = mkBunDerivation {
+                  pname = "example-consumer-bun-other";
+                  version = "0.1.0";
+                  inherit src;
+                  build = "bun index.js > /dev/null";
+                };
+              in
+              pkgs.runCommand "bun-deps-shared" { } ''
+                test "${bunDeps}" = "${other.bunDeps}"
+                touch $out
+              '';
           };
 
           packages.default = pkgs.runCommand "example-consumer" { } ''
@@ -82,8 +132,11 @@
           # Exercises the same merge for hooks.
           pre-commit.settings.hooks.check-executables-have-shebangs.enable = true;
 
+          # `bunTools` is the bun module's contribution to a project's shell:
+          # bun itself plus the bun2nix CLI, both from the nixpkgs bun2nix'
+          # sandbox hook uses, so the shell and the build agree on a version.
           devShells.default = mkDevShell {
-            packages = [ pkgs.jq ];
+            packages = [ pkgs.jq ] ++ bunTools;
             env.EXAMPLE_CONSUMER = "1";
           };
         };

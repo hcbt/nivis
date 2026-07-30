@@ -12,6 +12,18 @@
 
     treefmt-nix.url = "github:numtide/treefmt-nix";
     treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Consumed only by `flakeModules.bun`. Pinned by revision — this one is tag
+    # 2.1.2 — because `bun.nix`'s schema has no stability guarantee between
+    # bun2nix versions, so the generator moving under a repo is what makes its
+    # committed expression fail to evaluate.
+    #
+    # `follows` is load-bearing rather than tidiness: the hook runs `pkgs.bun`
+    # from THIS nixpkgs inside the sandbox, and a consumer's dev shell runs
+    # `pkgs.bun` from the nixpkgs it follows nivis onto. Left unfollowed they
+    # are two different bun versions installing the same lockfile.
+    bun2nix.url = "github:nix-community/bun2nix/0f2a1f0b6f42cebe3b149bf62d38754c5e0e9729";
+    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -20,6 +32,7 @@
       nixpkgs,
       git-hooks,
       treefmt-nix,
+      bun2nix,
       ...
     }:
     let
@@ -48,6 +61,10 @@
           treefmtNix = treefmt-nix;
         };
         repo = import ./modules/repo.nix { inherit nivisLib; };
+
+        # Language-specific, so deliberately absent from `default`: a bun
+        # project imports this alongside it.
+        bun = import ./modules/bun.nix { inherit bun2nix; };
         shell = import ./modules/shell.nix {
           inherit nivisLib;
           gitHooks = git-hooks;
