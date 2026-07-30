@@ -92,15 +92,15 @@ Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 
 `repo` is an attrset passed straight to `flakeModules.repo`:
 
-| Key               | Default         | Purpose                                                                |
-| ----------------- | --------------- | ---------------------------------------------------------------------- |
-| `enable`          | `true`          | Off for a flake that is not itself a repo (the examples in this tree). |
-| `runner`          | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted. |
-| `ecosystems`      | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/" }`.         |
-| `release`         | `true`          | Emit the release-please workflow and its config.                       |
-| `checks`          | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.  |
-| `nixPreinstalled` | `false`         | True for a self-hosted runner whose image already ships Nix.           |
-| `initialVersion`  | `"0.0.0"`       | Starting version for a repo release-please has not seen before.        |
+| Key               | Default         | Purpose                                                                     |
+| ----------------- | --------------- | --------------------------------------------------------------------------- |
+| `enable`          | `true`          | Off for a flake that is not itself a repo (the examples in this tree).      |
+| `runner`          | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted.      |
+| `ecosystems`      | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/", ignore ? [] }`. |
+| `release`         | `true`          | Emit the release-please workflow and its config.                            |
+| `checks`          | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.       |
+| `nixPreinstalled` | `false`         | True for a self-hosted runner whose image already ships Nix.                |
+| `initialVersion`  | `"0.0.0"`       | Starting version for a repo release-please has not seen before.             |
 
 `flakeModules.bun` takes its own attrset:
 
@@ -134,6 +134,26 @@ rather than by remembering. Change a workflow **in nivis**, then re-run
 `sync-repo` in each consuming repo. The generated paths are excluded from
 treefmt: prettier reformatting a workflow would put the committed copy
 permanently at odds with the generator, with no edit able to fix it.
+
+An ecosystem entry takes an `ignore` list for a dependency whose version is not
+that repo's to choose:
+
+```nix
+ecosystems = [
+  {
+    ecosystem = "bun";
+    ignore = [
+      # nixpkgs supplies the browsers, so the npm side must follow it.
+      { dependency = "@playwright/test"; }
+      { dependency = "typescript"; versions = [ "7.x" ]; }
+    ];
+  }
+];
+```
+
+Without it dependabot reopens the same unmergeable PR every week, and closing it
+by hand is not a fix — the next run recreates it. Each entry renders as
+`dependency-name`, plus `versions` when given.
 
 Releases are cut by release-please, not by hand — it maintains `CHANGELOG.md`
 from Conventional Commits and opens a release PR whose merge creates the tag.

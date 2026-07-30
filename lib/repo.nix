@@ -113,10 +113,30 @@ rec {
   dependabot =
     { ecosystems }:
     let
+      # `ignore` is for a dependency whose version is not this repo's to choose:
+      # one that must match something Nix supplies, or one deliberately held on
+      # a prerelease channel. Without it dependabot reopens the same
+      # unmergeable PR every week, and closing it by hand is not a fix — the
+      # next run recreates it.
+      # Written with explicit "\n" and spaces rather than as a `''` block: the
+      # block form strips indentation relative to its least-indented line, so a
+      # nested interpolation loses the two levels YAML needs here and the
+      # sequence lands at column 0.
+      ignoreEntry =
+        {
+          dependency,
+          versions ? [ ],
+        }:
+        "    - dependency-name: \"${dependency}\""
+        + lib.optionalString (versions != [ ]) (
+          "\n      versions: [ ${lib.concatMapStringsSep ", " (v: "\"${v}\"") versions} ]"
+        );
+
       entry =
         {
           ecosystem,
           directory ? "/",
+          ignore ? [ ],
         }:
         ''
           - package-ecosystem: "${ecosystem}"
@@ -125,7 +145,10 @@ rec {
               interval: "weekly"
             commit-message:
               prefix: "chore"
-        '';
+        ''
+        + lib.optionalString (ignore != [ ]) (
+          "  ignore:\n" + lib.concatMapStringsSep "\n" ignoreEntry ignore + "\n"
+        );
       blocks = map entry ([ { ecosystem = "github-actions"; } ] ++ ecosystems);
     in
     ''
