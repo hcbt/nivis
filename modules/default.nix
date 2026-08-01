@@ -15,6 +15,6 @@ args: {
     (import ./git-hooks.nix { inherit gitHooks treefmtNix nivisLib; })
     (import ./treefmt.nix { inherit treefmtNix nivisLib; })
     (import ./shell.nix { inherit nivisLib gitHooks treefmtNix; })
-    (import ./repo.nix { inherit nivisLib; } (args.repo or { }))
+    (import ./repo.nix { inherit nivisLib treefmtNix; } (args.repo or { }))
   ];
 }

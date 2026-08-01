@@ -60,7 +60,10 @@
           inherit nivisLib;
           treefmtNix = treefmt-nix;
         };
-        repo = import ./modules/repo.nix { inherit nivisLib; };
+        repo = import ./modules/repo.nix {
+          inherit nivisLib;
+          treefmtNix = treefmt-nix;
+        };
 
         # Language-specific, so deliberately absent from `default`: a bun
         # project imports this alongside it.
@@ -81,6 +84,12 @@
           # nivis eats its own generated files: the same workflows and
           # dependabot manifest it hands every other repo.
           repo.initialVersion = "0.2.0";
+          repo.name = "nivis";
+          repo.gitignoreExtra = ''
+            # `bun install` in examples/consumer, which is a bun project so the
+            # bun module has something to be tested against
+            node_modules/
+          '';
         })
       ];
 

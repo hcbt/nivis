@@ -70,7 +70,7 @@ merges the two, so nothing has to be re-stated:
 | `flakeModules.git-hooks` | git-hooks.nix flake module, prek as the runner, the treefmt hook, `check-merge-conflicts`, `check-yaml`, `check-added-large-files`. | `treefmt`             |
 | `flakeModules.treefmt`   | treefmt-nix flake module, `projectRootFile`, `nixfmt`, `prettier`, the base excludes.                                               | —                     |
 | `flakeModules.shell`     | `_module.args.mkDevShell`.                                                                                                          | `git-hooks`,`treefmt` |
-| `flakeModules.repo`      | `apps.sync-repo`, `checks.repo-files-current` — the GitHub-side files.                                                              | —                     |
+| `flakeModules.repo`      | `apps.sync-repo`, `checks.repo-files-current`, `checks.repo-invariants` — the GitHub-side files, `LICENSE`, `.gitignore`.           | `treefmt`             |
 | `flakeModules.default`   | All five. Takes the same parameters as `flakeModules.lib`.                                                                          | —                     |
 | `flakeModules.bun`       | `_module.args`: `mkBunDerivation`, `bunDeps`, `bunTools`, `bun2nix`. Plus `apps.sync-bun-nix` and `checks.bun-nix-current`.         | —                     |
 
@@ -92,15 +92,17 @@ Parameters, all to `flakeModules.default` / `flakeModules.lib`:
 
 `repo` is an attrset passed straight to `flakeModules.repo`:
 
-| Key               | Default         | Purpose                                                                     |
-| ----------------- | --------------- | --------------------------------------------------------------------------- |
-| `enable`          | `true`          | Off for a flake that is not itself a repo (the examples in this tree).      |
-| `runner`          | `ubuntu-latest` | Runner label for the generated workflows — e.g. `nix-x64` self-hosted.      |
-| `ecosystems`      | `[]`            | Extra dependabot ecosystems, `{ ecosystem, directory ? "/", ignore ? [] }`. |
-| `release`         | `true`          | Emit the release-please workflow and its config.                            |
-| `checks`          | `false`         | Emit a `nix flake check` workflow. Off where the repo has its own CI.       |
-| `nixPreinstalled` | `false`         | True for a self-hosted runner whose image already ships Nix.                |
-| `initialVersion`  | `"0.0.0"`       | Starting version for a repo release-please has not seen before.             |
+| Key              | Default                | Purpose                                                                             |
+| ---------------- | ---------------------- | ----------------------------------------------------------------------------------- |
+| `enable`         | `true`                 | Off for a flake that is not itself a repo (the examples in this tree).              |
+| `runner`         | `runners.githubHosted` | A runner profile — `runners.selfHosted`, or `mkRunner { label; nixPreinstalled; }`. |
+| `ecosystems`     | `[]`                   | Extra dependabot ecosystems, `{ ecosystem, directory ? "/", ignore ? [] }`.         |
+| `release`        | `true`                 | Emit the release-please workflow and its config.                                    |
+| `checks`         | `false`                | Emit a `nix flake check` workflow. Off where the repo has its own CI.               |
+| `initialVersion` | `"0.0.0"`              | Starting version for a repo release-please has not seen before.                     |
+| `extraFiles`     | `{}`                   | The project's own generated files, `{ "path" = "text"; }`.                          |
+| `name`           | `null`                 | Repo name for the generated MIT `LICENSE`. No name, no LICENSE.                     |
+| `gitignoreExtra` | `""`                   | Project-specific `.gitignore` entries, appended to the shared base.                 |
 
 `flakeModules.bun` takes its own attrset:
 
@@ -154,6 +156,46 @@ ecosystems = [
 Without it dependabot reopens the same unmergeable PR every week, and closing it
 by hand is not a fix — the next run recreates it. Each entry renders as
 `dependency-name`, plus `versions` when given.
+
+### What a project generates for itself
+
+`extraFiles` puts a project's own files through the same machinery — one
+writer, one drift check, one set of treefmt exclusions:
+
+```nix
+repo.extraFiles = {
+  ".github/workflows/test.yml" = import ./nix/ci/test-workflow.nix { inherit runner; };
+};
+```
+
+nivis owns the mechanism; the project owns the content. Half-generated is the
+worst of the three states: a repo whose release-please workflow is generated
+while its test workflow is hand-edited holds the same fact — the runner label,
+an action version — in two places, and only one is checked. The unchecked half
+is what drifts. A path colliding with one nivis already generates is a hard
+error, not a silent override.
+
+### Runners are a profile, not two flags
+
+`runner` and `nixPreinstalled` used to be independent, so `runner = "nix-x64"`
+without `nixPreinstalled = true` emitted an install-nix step onto an image that
+already had Nix, and nothing caught it. A profile carries both:
+
+```nix
+repo.runner = nivis.lib.repo.runners.selfHosted;   # nix-x64, Nix preinstalled
+repo.runner = nivis.lib.repo.runners.githubHosted; # ubuntu-latest, installs Nix
+repo.runner = nivis.lib.repo.mkRunner { label = "..."; nixPreinstalled = false; };
+```
+
+### checks.repo-invariants
+
+Facts that must hold but live in files nivis does not own, so they cannot be
+generated:
+
+- no `uses:` in `.github/workflows` pinned to a branch (`@master`, `@main`,
+  `@latest`, `@release`)
+- every lockfile present has a matching dependabot ecosystem — a `bun.lock`
+  with no `bun` ecosystem is watched by nothing and says nothing about it
 
 Releases are cut by release-please, not by hand — it maintains `CHANGELOG.md`
 from Conventional Commits and opens a release PR whose merge creates the tag.

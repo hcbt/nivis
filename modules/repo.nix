@@ -8,17 +8,22 @@
 # module is what keeps every repo's copy identical without anyone editing seven
 # of them by hand. Changing a workflow means changing it here and re-running
 # the app.
-{ nivisLib }:
+{ nivisLib, treefmtNix }:
 {
   # Off for a flake that is not itself a repo — the examples in this tree are
   # subdirectory flakes, and GitHub reads none of these files from there.
   enable ? true,
-  runner ? "ubuntu-latest",
+  runner ? nivisLib.repo.runners.githubHosted,
   ecosystems ? [ ],
   release ? true,
   checks ? false,
-  nixPreinstalled ? false,
   initialVersion ? "0.1.0",
+  # The project's own generated files, { "path" = "text"; }. See lib/repo.nix.
+  extraFiles ? { },
+  # Repo name, for the LICENSE copyright line.
+  name ? null,
+  # Project-specific .gitignore entries, appended to the shared base.
+  gitignoreExtra ? "",
 }:
 { lib, self, ... }:
 let
@@ -28,8 +33,10 @@ let
       ecosystems
       release
       checks
-      nixPreinstalled
       initialVersion
+      extraFiles
+      name
+      gitignoreExtra
       ;
   };
   paths = lib.attrNames files;
@@ -46,6 +53,16 @@ let
 in
 {
   key = "nivis:repo";
+
+  imports = [
+    # `extraFiles` are generated, so treefmt must leave them alone — prettier
+    # reformatting a generated workflow puts the committed copy permanently at
+    # odds with what this module writes, and no edit satisfies both. Defining
+    # that exclusion means defining a treefmt option, so the module that
+    # declares it has to be imported here. Same shape as git-hooks importing
+    # its peer; the `key` attributes collapse the duplicate under `default`.
+    (import ./treefmt.nix { inherit treefmtNix nivisLib; })
+  ];
 
   perSystem =
     { pkgs, mkShellApp, ... }:
@@ -110,6 +127,15 @@ in
         };
       in
       {
+        # Generated, so treefmt must not touch them. Both forms, for the same
+        # reason `formatterExcludes` carries both: treefmt matches a bare path
+        # against the project root only.
+        treefmt.settings.global.excludes =
+          let
+            e = lib.attrNames extraFiles;
+          in
+          e ++ map (x: "**/" + x) e;
+
         apps.sync-repo.program = lib.getExe syncRepo;
 
         # `nix flake check` evaluates apps but never builds them, so a script
@@ -125,7 +151,7 @@ in
         # every option flipped is what exercises the whole signature.
         checks.repo-files-all-options = stage "nivis-repo-files-all-options" (
           nivisLib.repo.repoFiles {
-            runner = "nix-x64";
+            runner = nivisLib.repo.runners.selfHosted;
             ecosystems = [
               {
                 ecosystem = "npm";
@@ -142,10 +168,67 @@ in
             ];
             release = true;
             checks = true;
-            nixPreinstalled = true;
             initialVersion = "9.9.9";
+            # A parameter this module accepts but never forwards evaluates fine
+            # in nivis and breaks in the first consumer that sets it — how
+            # `nixPreinstalled` reached stakles broken.
+            extraFiles = {
+              ".github/workflows/example.yml" = "name: example\n";
+            };
+            name = "example";
+            gitignoreExtra = "/dist\n";
           }
         );
+
+        # Facts that must hold across the repo but live in files nivis does not
+        # own. Without these the only thing keeping them true is remembering,
+        # and each has already been wrong at least once.
+        checks.repo-invariants =
+          pkgs.runCommand "repo-invariants"
+            {
+              nativeBuildInputs = [
+                pkgs.yq-go
+                pkgs.ripgrep
+              ];
+            }
+            ''
+              cd ${selfSrc}
+              status=0
+
+              # 1. A workflow ref on a branch moves under the repo without a
+              # version to read. Five of these pointed at @master across the
+              # fleet, so a coldstart change reached three repos immediately.
+              if [ -d .github/workflows ]; then
+                if branchrefs=$(rg -n --no-heading 'uses: [^ ]+@(master|main|latest|release)$' .github/workflows 2>/dev/null); then
+                  echo "workflow refs pinned to a branch, not a version:"
+                  echo "$branchrefs"
+                  status=1
+                fi
+              fi
+
+              # 2. A lockfile with no matching dependabot ecosystem is watched
+              # by nothing, and says nothing about it — farmville ran that way
+              # after its bun migration until the gap was found by hand.
+              eco=""
+              if [ -f .github/dependabot.yml ]; then
+                eco=$(yq -r '.updates[].package-ecosystem' .github/dependabot.yml | tr '\n' ' ')
+              fi
+              want() {
+                if [ -e "$1" ] && ! echo " $eco " | grep -q " $2 "; then
+                  echo "$1 present but dependabot declares no '$2' ecosystem"
+                  status=1
+                fi
+              }
+              want bun.lock bun
+              want composer.lock composer
+              want go.sum gomod
+              want Cargo.lock cargo
+              want uv.lock uv
+              want backend/uv.lock uv
+
+              [ "$status" = 0 ] && echo "repo invariants hold" > $out
+              exit $status
+            '';
 
         # `repo-files-all-options` proves the workflows RENDER; nothing proved
         # what they trigger on. A push trigger of `"**"` fires alongside
