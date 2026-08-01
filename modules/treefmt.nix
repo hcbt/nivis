@@ -31,7 +31,15 @@
         prettier.enable = true;
       };
 
-      settings.global.excludes = nivisLib.baseFormatterExcludes ++ nivisLib.repo.formatterExcludes;
+      settings.global.excludes =
+        nivisLib.baseFormatterExcludes
+        ++ nivisLib.repo.formatterExcludes
+        # Source for a consumer's `repo.extraFiles`. The generated copies are
+        # already excluded; formatting only the source leaves them unequal.
+        ++ [
+          "nix/ci/**"
+          "**/nix/ci/**"
+        ];
     };
   };
 }
