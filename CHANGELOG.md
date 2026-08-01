@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.8.1](https://github.com/hcbt/nivis/compare/v0.8.0...v0.8.1) (2026-08-01)
+
+
+### Fixed
+
+* **repo:** do not flag a commented-out workflow ref as unpinned ([#43](https://github.com/hcbt/nivis/issues/43)) ([d0c5b3a](https://github.com/hcbt/nivis/commit/d0c5b3a972e8aa174d47fbc80f399c817aacb0a7))
+
 ## [0.8.0](https://github.com/hcbt/nivis/compare/v0.7.1...v0.8.0) (2026-08-01)
 
 
