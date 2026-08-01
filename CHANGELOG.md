@@ -10,6 +10,13 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.8.2](https://github.com/hcbt/nivis/compare/v0.8.1...v0.8.2) (2026-08-01)
+
+
+### Fixed
+
+* **docs:** require feat or fix for anything a consumer receives ([#46](https://github.com/hcbt/nivis/issues/46)) ([c52362c](https://github.com/hcbt/nivis/commit/c52362c1080571baa9d0529d6dae12540ba06d1a))
+
 ## [0.8.1](https://github.com/hcbt/nivis/compare/v0.8.0...v0.8.1) (2026-08-01)
 
 
