@@ -10,6 +10,17 @@ publish, and `nivis.lib`.
 
 Consumers should pin a tag rather than tracking `master`; see the README.
 
+## [0.8.0](https://github.com/hcbt/nivis/compare/v0.7.1...v0.8.0) (2026-08-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* **repo:** `repo.nixPreinstalled` is gone and `repo.runner` now takes a profile rather than a label string. Consumers move to `nivis.lib.repo.runners.selfHosted` or `.githubHosted`.
+
+### Added
+
+* **repo:** generate what every repo shares, and check what cannot be generated ([#41](https://github.com/hcbt/nivis/issues/41)) ([380e63e](https://github.com/hcbt/nivis/commit/380e63e32019d9f9da348a2152d5861a8d8ad21c))
+
 ## [0.7.1](https://github.com/hcbt/nivis/compare/v0.7.0...v0.7.1) (2026-07-30)
 
 
