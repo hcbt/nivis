@@ -39,6 +39,40 @@ rec {
     # what nivis writes.
     paths ++ map (p: "**/" + p) paths;
 
+  # A runner is one decision, not two flags that must agree. `runner` and
+  # `nixPreinstalled` were independent: setting `runner = "nix-x64"` and
+  # forgetting `nixPreinstalled = true` emits an install-nix step onto an image
+  # that already has Nix, and nothing catches the mismatch. A profile carries
+  # both, so the pair cannot disagree.
+  #
+  # Construct a custom one with `mkRunner` when a repo needs a label these do
+  # not cover; the fields are the interface.
+  mkRunner =
+    {
+      label,
+      nixPreinstalled ? false,
+    }:
+    {
+      inherit label nixPreinstalled;
+    };
+
+  runners = {
+    # The snowplow-built self-hosted image. Warm Nix store, Nix already
+    # present, x86_64-linux only.
+    selfHosted = mkRunner {
+      label = "nix-x64";
+      nixPreinstalled = true;
+    };
+
+    # GitHub-hosted. Cold every run and needs Nix installed, but it is the only
+    # way to cover macOS and the only option on a repo with no runner
+    # registered.
+    githubHosted = mkRunner {
+      label = "ubuntu-latest";
+      nixPreinstalled = false;
+    };
+  };
+
   # Files written only when absent, and never compared. Everything here is
   # state owned by a tool rather than configuration owned by nivis, so a repo's
   # copy is *expected* to diverge from what this generates.
@@ -59,9 +93,10 @@ rec {
   # and `checks.repo-files-current` compares them.
   repoFiles =
     {
-      # Runner label for generated workflows. The self-hosted `nix-x64` has a
-      # warm Nix store; GitHub-hosted runners start cold but cover macOS.
-      runner ? "ubuntu-latest",
+      # A runner profile from `runners`, or one built with `mkRunner`. Carries
+      # the label and whether the image already ships Nix, so the two cannot
+      # disagree.
+      runner ? runners.githubHosted,
       # Non-Nix package ecosystems dependabot should watch, as
       # { ecosystem = "npm"; directory = "/"; } — `github-actions` is always
       # included, since every repo here has workflows.
@@ -75,23 +110,59 @@ rec {
       # Off by default: a repo with CI of its own already runs the checks, and
       # a second workflow would duplicate every build.
       checks ? false,
-      # True when `runner` is a self-hosted image that already ships Nix — the
-      # snowplow-built runners do. Installing Nix on top of it fails, so the
-      # install step is omitted rather than made conditional at run time.
-      nixPreinstalled ? false,
+
+      # The project's OWN generated files, as { "path" = "text"; }. nivis owns
+      # the mechanism — one writer, one drift check, one set of treefmt
+      # exclusions — and the project owns the content.
+      #
+      # This exists because half-generated is worse than either extreme: a repo
+      # whose release-please workflow is generated while its test workflow is
+      # hand-edited holds the same fact (the runner label, an action version) in
+      # two places, and only one of them is checked. The unchecked half is what
+      # drifts.
+      extraFiles ? { },
+      # Repo name, for the LICENSE copyright line. Without it there is nothing
+      # to interpolate, so LICENSE is only generated when a name is given.
+      name ? null,
+      # Project-specific .gitignore entries, appended to the shared base.
+      gitignoreExtra ? "",
     }:
-    {
-      ".envrc" = envrc;
-      ".github/dependabot.yml" = dependabot { inherit ecosystems; };
-      ".github/workflows/update-flake-lock.yml" = updateFlakeLock { inherit runner nixPreinstalled; };
-    }
-    // lib.optionalAttrs checks {
-      ".github/workflows/nix-check.yml" = nixCheck { inherit runner nixPreinstalled; };
-    }
-    // lib.optionalAttrs release {
-      ".github/workflows/release-please.yml" = releasePleaseWorkflow { inherit runner; };
-      "release-please-config.json" = releasePleaseConfig { inherit initialVersion; };
-    };
+    let
+      owned = {
+        ".envrc" = envrc;
+        ".gitignore" = gitignore { extra = gitignoreExtra; };
+        ".github/dependabot.yml" = dependabot { inherit ecosystems; };
+        ".github/workflows/update-flake-lock.yml" = updateFlakeLock {
+          runner = runner.label;
+          inherit (runner) nixPreinstalled;
+        };
+      }
+      // lib.optionalAttrs checks {
+        ".github/workflows/nix-check.yml" = nixCheck {
+          runner = runner.label;
+          inherit (runner) nixPreinstalled;
+        };
+      }
+      // lib.optionalAttrs release {
+        ".github/workflows/release-please.yml" = releasePleaseWorkflow { runner = runner.label; };
+        "release-please-config.json" = releasePleaseConfig { inherit initialVersion; };
+      }
+      // lib.optionalAttrs (name != null) {
+        "LICENSE" = mitLicense { inherit name; };
+      };
+
+      clashes = lib.intersectLists (lib.attrNames owned) (lib.attrNames extraFiles);
+    in
+    # A silent override would defeat the point: the file would still be
+    # generated and drift-checked, but against the project's copy rather than
+    # nivis', so "every repo carries identical files" would quietly stop being
+    # true for that path.
+    assert lib.assertMsg (clashes == [ ]) ''
+      repo.extraFiles collides with files nivis already generates:
+      ${lib.concatMapStringsSep "\n" (p: "  ${p}") clashes}
+      Change the workflow in nivis instead, or pick a different path.
+    '';
+    owned // extraFiles;
 
   envrc = ''
     # Auto-activate the flake dev shell on `cd` (requires direnv + its shell
@@ -362,5 +433,50 @@ rec {
 
     # written by prek when the dev shell is entered
     .pre-commit-config.yaml
+
+    # per-machine Claude Code state, not shared configuration
+    .claude/settings.local.json
   '';
+
+  # The base every repo carries, plus whatever that project genuinely needs.
+  # Split rather than hand-maintained: the entries above are the same in every
+  # repo and drifted to between 7 and 223 lines when nothing generated them —
+  # which is how `.claude/settings.local.json` got committed once.
+  gitignore =
+    {
+      extra ? "",
+    }:
+    gitignoreBase + lib.optionalString (extra != "") ("\n" + extra);
+
+  # MIT, with the holder line the three repos that already carry it use. The
+  # text is identical everywhere except that line, so this generates rather
+  # than asking nine repos to hold their own copy.
+  mitLicense =
+    {
+      name,
+      year ? "2026",
+    }:
+    ''
+      MIT License
+
+      Copyright (c) ${year} the ${name} authors
+
+      Permission is hereby granted, free of charge, to any person obtaining a copy
+      of this software and associated documentation files (the "Software"), to deal
+      in the Software without restriction, including without limitation the rights
+      to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+      copies of the Software, and to permit persons to whom the Software is
+      furnished to do so, subject to the following conditions:
+
+      The above copyright notice and this permission notice shall be included in all
+      copies or substantial portions of the Software.
+
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+      SOFTWARE.
+    '';
 }
