@@ -84,7 +84,9 @@
           # nivis eats its own generated files: the same workflows and
           # dependabot manifest it hands every other repo.
           repo.initialVersion = "0.2.0";
+          repo.runner = nivisLib.repo.runners.githubHosted;
           repo.name = "nivis";
+          repo.extraFiles = import ./nix/workflows.nix { };
           repo.gitignoreExtra = ''
             # `bun install` in examples/consumer, which is a bun project so the
             # bun module has something to be tested against
