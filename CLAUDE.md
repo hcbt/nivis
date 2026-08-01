@@ -47,6 +47,15 @@ so a change here is a change to every consumer's build.
 - Changing `nivisLib.defaultSystems` means changing the CI matrix in
   `.github/workflows/test.yml` to match; a system with no runner is a system
   nothing checks.
+- **A change consumers need is `feat` or `fix`, never `chore`.** release-please
+  does not release a `chore:`, so a chore-only commit leaves master ahead of the
+  newest tag — and a consumer pinning that tag can never receive the change. It
+  is not enough for the work to be on master. Every one of the nine repos ended
+  up with a stale tag this way, and every pin pointed at code predating the
+  work it was supposed to deliver. If a commit changes anything a consumer
+  imports, generates, or pins, it is user-facing by definition. To release
+  history that is already merged, put `Release-As: X.Y.Z` in a commit footer.
+
 - **Do not hand-write `CHANGELOG.md`.** release-please owns it from 0.3.0
   onward and inserts each entry above the newest version heading, so a
   hand-written `[Unreleased]` section ends up orphaned below the latest release.
