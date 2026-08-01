@@ -199,7 +199,10 @@ in
               # version to read. Five of these pointed at @master across the
               # fleet, so a coldstart change reached three repos immediately.
               if [ -d .github/workflows ]; then
-                if branchrefs=$(rg -n --no-heading 'uses: [^ ]+@(master|main|latest|release)$' .github/workflows 2>/dev/null); then
+                # Anchored so a documentation comment does not count. coldstart's
+                # README example is a commented-out `uses:` line, and an
+                # unanchored pattern flagged it as a real ref.
+                if branchrefs=$(rg -n --no-heading '^\s*(- )?uses: [^ ]+@(master|main|latest|release)$' .github/workflows 2>/dev/null); then
                   echo "workflow refs pinned to a branch, not a version:"
                   echo "$branchrefs"
                   status=1
