@@ -1,109 +1,84 @@
 {
-  description = "Shared flake-parts scaffolding for hcbt projects";
+  description = "Shared Nix values for hcbt projects — superseded by devenv";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
 
-    flake-parts.url = "github:hercules-ci/flake-parts";
-    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    # NOT `follows`-ed onto this flake's nixpkgs, deliberately. devenv is Rust,
+    # and the binaries on devenv.cachix.org are built against
+    # `cachix/devenv-nixpkgs/rolling`. Overriding its nixpkgs changes the
+    # derivation hash, every substituter misses, and `devenv-tasks` and its
+    # crate graph compile from source on each machine and each CI run.
+    devenv.url = "github:cachix/devenv";
 
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.inputs.nixpkgs.follows = "nixpkgs";
+  };
 
-    treefmt-nix.url = "github:numtide/treefmt-nix";
-    treefmt-nix.inputs.nixpkgs.follows = "nixpkgs";
-
-    # Consumed only by `flakeModules.bun`. Pinned by revision — this one is tag
-    # 2.1.2 — because `bun.nix`'s schema has no stability guarantee between
-    # bun2nix versions, so the generator moving under a repo is what makes its
-    # committed expression fail to evaluate.
-    #
-    # `follows` is load-bearing rather than tidiness: the hook runs `pkgs.bun`
-    # from THIS nixpkgs inside the sandbox, and a consumer's dev shell runs
-    # `pkgs.bun` from the nixpkgs it follows nivis onto. Left unfollowed they
-    # are two different bun versions installing the same lockfile.
-    bun2nix.url = "github:nix-community/bun2nix/0f2a1f0b6f42cebe3b149bf62d38754c5e0e9729";
-    bun2nix.inputs.nixpkgs.follows = "nixpkgs";
+  nixConfig = {
+    extra-substituters = "https://devenv.cachix.org";
+    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
   };
 
   outputs =
     inputs@{
-      flake-parts,
       nixpkgs,
+      devenv,
       git-hooks,
-      treefmt-nix,
-      bun2nix,
       ...
     }:
     let
       nivisLib = import ./lib { inherit (nixpkgs) lib; };
 
-      # Each module is partially applied with nivis' OWN inputs here, before a
-      # consumer ever sees it. flake-parts threads the CONSUMING flake's
-      # `inputs` into every module it evaluates, so a module that reached for
-      # `inputs.git-hooks` would force every consumer to declare git-hooks and
-      # treefmt-nix itself — which is most of the boilerplate this exists to
-      # remove. Closing over them here is what reduces a consumer to one input.
-      flakeModules = {
-        default = import ./modules {
-          inherit nivisLib;
-          gitHooks = git-hooks;
-          treefmtNix = treefmt-nix;
-        };
-        lib = import ./modules/lib.nix { inherit nivisLib; };
-        git-hooks = import ./modules/git-hooks.nix {
-          inherit nivisLib;
-          gitHooks = git-hooks;
-          treefmtNix = treefmt-nix;
-        };
-        treefmt = import ./modules/treefmt.nix {
-          inherit nivisLib;
-          treefmtNix = treefmt-nix;
-        };
-        repo = import ./modules/repo.nix {
-          inherit nivisLib;
-          treefmtNix = treefmt-nix;
-        };
+      forEachSystem = nixpkgs.lib.genAttrs nivisLib.defaultSystems;
 
-        # Language-specific, so deliberately absent from `default`: a bun
-        # project imports this alongside it.
-        bun = import ./modules/bun.nix { inherit bun2nix; };
-        shell = import ./modules/shell.nix {
-          inherit nivisLib;
-          gitHooks = git-hooks;
-          treefmtNix = treefmt-nix;
-        };
-      };
+      devenvPkgsFor = forEachSystem (system: import devenv.inputs.nixpkgs { inherit system; });
     in
-    flake-parts.lib.mkFlake { inherit inputs; } {
-      systems = nivisLib.defaultSystems;
+    {
+      lib = nivisLib;
 
-      imports = [
-        (flakeModules.default {
-          srcRoot = ./.;
-          # nivis eats its own generated files: the same workflows and
-          # dependabot manifest it hands every other repo.
-          repo.initialVersion = "0.2.0";
-          repo.runner = nivisLib.repo.runners.githubHosted;
-          repo.name = "nivis";
-          repo.extraFiles = import ./nix/workflows.nix { };
-          repo.gitignoreExtra = ''
-            # `bun install` in examples/consumer, which is a bun project so the
-            # bun module has something to be tested against
-            node_modules/
+      checks = forEachSystem (system: {
+        # `mkCleanSrc` is the one function with behaviour worth asserting: it
+        # decides what a consumer's checks copy into the store, and a filter
+        # that silently stops excluding is invisible until a build's hash starts
+        # moving with somebody's local `.direnv`.
+        lib-clean-src =
+          let
+            filtered = nivisLib.mkCleanSrc {
+              src = ./.;
+              excludes = [ "/lib" ];
+            };
+          in
+          nixpkgs.legacyPackages.${system}.runCommand "lib-clean-src" { } ''
+            test -e ${filtered}/flake.nix || { echo "mkCleanSrc dropped a file it should keep" >&2; exit 1; }
+            test ! -e ${filtered}/lib || { echo "mkCleanSrc kept a path it was told to exclude" >&2; exit 1; }
+            touch $out
           '';
-        })
-      ];
 
-      flake = {
-        inherit flakeModules;
-        lib = nivisLib;
-      };
-
-      perSystem = { pkgs, mkDevShell, ... }: {
-        devShells.default = mkDevShell {
-          packages = [ pkgs.nixd ];
+        pre-commit = git-hooks.lib.${system}.run {
+          src = ./.;
+          package = devenvPkgsFor.${system}.prek;
+          inherit ((import ./devenv.nix { pkgs = devenvPkgsFor.${system}; }).git-hooks)
+            hooks
+            excludes
+            ;
         };
-      };
+      });
+
+      devShells = forEachSystem (system: {
+        default = devenv.lib.mkShell {
+          inherit inputs;
+          pkgs = devenvPkgsFor.${system};
+          modules = [
+            (import ./devenv.nix {
+              pkgs = devenvPkgsFor.${system};
+              # Same set as `pkgs` here. The split only matters in
+              # `checks.pre-commit`, which builds from this flake's nixpkgs and
+              # borrows only the tools.
+              toolPkgs = devenvPkgsFor.${system};
+            })
+          ];
+        };
+      });
     };
 }
