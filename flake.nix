@@ -32,6 +32,8 @@
 
       forEachSystem = nixpkgs.lib.genAttrs nivisLib.defaultSystems;
 
+      flakePkgsFor = forEachSystem (system: nixpkgs.legacyPackages.${system});
+
       devenvPkgsFor = forEachSystem (system: import devenv.inputs.nixpkgs { inherit system; });
     in
     {
@@ -75,7 +77,7 @@
               # Same set as `pkgs` here. The split only matters in
               # `checks.pre-commit`, which builds from this flake's nixpkgs and
               # borrows only the tools.
-              toolPkgs = devenvPkgsFor.${system};
+              toolPkgs = flakePkgsFor.${system};
             })
           ];
         };
