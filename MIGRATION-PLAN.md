@@ -5,17 +5,17 @@ plan is kept only where it explains a decision.
 
 ## 1. End state
 
-| Repo          | State                                             |
-| ------------- | ------------------------------------------------- |
-| nixzoid       | devenv, master green                              |
-| nixcord       | devenv, master green                              |
-| coldstart     | devenv, master green                              |
-| snowplow      | devenv, master green                              |
-| writestupid   | devenv, stack ported to devenv processes          |
-| stakles       | devenv, runner image carries devenv               |
-| nivis         | shrunk to `lib`                                   |
-| nixplates     | untouched, pinned at nivis `v0.8.2`               |
-| cloudflare-os | untouched, pinned at nivis `v0.8.2`               |
+| Repo          | State                                    |
+| ------------- | ---------------------------------------- |
+| nixzoid       | devenv, master green                     |
+| nixcord       | devenv, master green                     |
+| coldstart     | devenv, master green                     |
+| snowplow      | devenv, master green                     |
+| writestupid   | devenv, stack ported to devenv processes |
+| stakles       | devenv, runner image carries devenv      |
+| nivis         | shrunk to `lib`                          |
+| nixplates     | untouched, pinned at nivis `v0.8.2`      |
+| cloudflare-os | untouched, pinned at nivis `v0.8.2`      |
 
 Every repo keeps `flake.nix`. devenv owns the dev shell, the git hooks and —
 in writestupid — the local stack. release-please, `CHANGELOG.md` and the
